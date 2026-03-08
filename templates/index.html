@@ -4,287 +4,343 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Extraction Playground</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
-
-        .header { padding: 20px 32px; border-bottom: 1px solid #1e293b; display: flex; align-items: center; justify-content: space-between; }
-        .header-left h1 { font-size: 1.25rem; font-weight: 600; }
-        .header-left h1 span { color: #818cf8; }
-        .header-left p { font-size: 0.85rem; color: #64748b; margin-top: 2px; }
-
-        /* Tabs */
-        .tabs { display: flex; gap: 4px; }
-        .tab {
-            padding: 8px 18px; border-radius: 8px; border: 1px solid transparent;
-            background: transparent; color: #64748b; font-size: 0.85rem; font-weight: 500;
-            cursor: pointer; transition: all 0.15s;
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0a0a0f;
+            color: #e4e4ed;
+            min-height: 100vh;
+            overflow: hidden;
         }
-        .tab:hover { color: #94a3b8; background: #1e293b; }
-        .tab.active { background: #818cf820; color: #818cf8; border-color: #818cf840; }
 
-        .main { display: flex; height: calc(100vh - 77px); }
+        /* Layout */
+        .app { display: flex; height: 100vh; }
 
         /* Sidebar */
-        .sidebar { width: 300px; min-width: 300px; border-right: 1px solid #1e293b; padding: 20px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+        .sidebar {
+            width: 320px; min-width: 320px;
+            background: #111118;
+            border-right: 1px solid #1e1e2e;
+            display: flex; flex-direction: column;
+            overflow: hidden;
+        }
 
-        .section-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; font-weight: 600; margin-bottom: 8px; }
+        .logo {
+            padding: 24px 24px 20px;
+            border-bottom: 1px solid #1e1e2e;
+        }
+        .logo h1 {
+            font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em;
+        }
+        .logo h1 .accent { color: #7c5cfc; }
+        .logo p { font-size: 0.75rem; color: #555; margin-top: 4px; font-weight: 400; }
+
+        .sidebar-content {
+            flex: 1; overflow-y: auto; padding: 20px 24px;
+            display: flex; flex-direction: column; gap: 24px;
+        }
+        .sidebar-content::-webkit-scrollbar { width: 4px; }
+        .sidebar-content::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-content::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 4px; }
+
+        .sidebar-footer { padding: 16px 24px; border-top: 1px solid #1e1e2e; }
+
+        /* Section labels */
+        .label {
+            font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.1em; color: #444; margin-bottom: 10px;
+        }
 
         /* Drop zone */
         .drop-zone {
-            border: 2px dashed #334155; border-radius: 10px; padding: 28px 16px;
-            text-align: center; cursor: pointer; transition: all 0.2s;
-            background: #1e293b40;
+            position: relative;
+            border: 1.5px dashed #2a2a3a; border-radius: 12px;
+            padding: 32px 16px; text-align: center;
+            cursor: pointer; transition: all 0.2s;
+            background: linear-gradient(135deg, #13131a 0%, #111118 100%);
         }
-        .drop-zone:hover, .drop-zone.dragover { border-color: #818cf8; background: #818cf810; }
-        .drop-zone .icon { font-size: 1.8rem; margin-bottom: 8px; }
-        .drop-zone p { font-size: 0.85rem; color: #94a3b8; }
-        .drop-zone .filename { margin-top: 8px; font-weight: 600; color: #818cf8; font-size: 0.85rem; word-break: break-all; }
-        .drop-zone .filesize { font-size: 0.75rem; color: #64748b; margin-top: 2px; }
+        .drop-zone:hover { border-color: #7c5cfc40; background: #7c5cfc08; }
+        .drop-zone.dragover { border-color: #7c5cfc; background: #7c5cfc10; }
+        .drop-zone .upload-icon {
+            width: 40px; height: 40px; margin: 0 auto 12px;
+            border-radius: 10px; background: #1a1a26;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .drop-zone .upload-icon svg { opacity: 0.5; }
+        .drop-zone:hover .upload-icon svg { opacity: 0.8; }
+        .drop-zone p { font-size: 0.82rem; color: #666; }
+        .drop-zone p span { color: #7c5cfc; font-weight: 500; }
         .drop-zone input { display: none; }
 
-        /* Library toggles */
-        .lib-list { display: flex; flex-direction: column; gap: 8px; }
-        .lib-toggle {
-            display: flex; align-items: flex-start; gap: 10px;
-            padding: 10px 12px; border-radius: 8px; cursor: pointer;
-            border: 1px solid #1e293b; transition: all 0.15s;
-            background: transparent;
+        .file-info {
+            display: none; margin-top: 12px; padding: 10px 12px;
+            background: #7c5cfc10; border: 1px solid #7c5cfc30;
+            border-radius: 8px; text-align: left;
         }
-        .lib-toggle:hover { background: #1e293b; }
-        .lib-toggle.selected { border-color: #818cf8; background: #818cf810; }
-        .lib-toggle input { display: none; }
-        .lib-check {
-            width: 18px; height: 18px; border-radius: 4px; border: 2px solid #475569;
+        .file-info.visible { display: flex; align-items: center; gap: 10px; }
+        .file-info .file-icon {
+            width: 32px; height: 32px; border-radius: 6px; background: #7c5cfc20;
             display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-            margin-top: 1px; transition: all 0.15s;
         }
-        .lib-toggle.selected .lib-check { background: #818cf8; border-color: #818cf8; }
-        .lib-check svg { display: none; }
-        .lib-toggle.selected .lib-check svg { display: block; }
-        .lib-info { flex: 1; }
-        .lib-name { font-size: 0.88rem; font-weight: 600; }
-        .lib-desc { font-size: 0.73rem; color: #64748b; margin-top: 2px; line-height: 1.4; }
-
-        .btn {
-            width: 100%; padding: 10px; background: #818cf8; color: #fff;
-            border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600;
-            cursor: pointer; transition: background 0.15s;
+        .file-info .file-meta { flex: 1; min-width: 0; }
+        .file-info .file-name {
+            font-size: 0.8rem; font-weight: 600; color: #c4b5fd;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .btn:hover:not(:disabled) { background: #6366f1; }
-        .btn.secondary { background: #f59e0b; }
-        .btn.secondary:hover:not(:disabled) { background: #d97706; }
+        .file-info .file-size { font-size: 0.7rem; color: #666; margin-top: 1px; }
 
-        .select-actions { display: flex; gap: 8px; margin-bottom: 4px; }
-        .select-actions button {
-            background: none; border: none; color: #818cf8; font-size: 0.75rem;
-            cursor: pointer; padding: 0; text-decoration: underline;
+        /* Library list */
+        .lib-group { display: flex; flex-direction: column; gap: 6px; }
+        .lib-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 10px; border-radius: 8px; cursor: pointer;
+            border: 1px solid transparent; transition: all 0.12s;
         }
+        .lib-item:hover { background: #1a1a26; }
+        .lib-item.selected { background: #7c5cfc0a; border-color: #7c5cfc30; }
+        .lib-item input { display: none; }
 
-        .sidebar-section { display: none; }
-        .sidebar-section.active { display: flex; flex-direction: column; gap: 20px; }
+        .lib-checkbox {
+            width: 16px; height: 16px; border-radius: 4px;
+            border: 1.5px solid #333; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.12s;
+        }
+        .lib-item.selected .lib-checkbox {
+            background: #7c5cfc; border-color: #7c5cfc;
+        }
+        .lib-checkbox svg { opacity: 0; transition: opacity 0.1s; }
+        .lib-item.selected .lib-checkbox svg { opacity: 1; }
+
+        .lib-details { flex: 1; min-width: 0; }
+        .lib-details .name { font-size: 0.82rem; font-weight: 600; }
+        .lib-details .desc { font-size: 0.7rem; color: #555; margin-top: 1px; }
+
+        .lib-category-badge {
+            font-size: 0.6rem; font-weight: 600; padding: 2px 6px;
+            border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em;
+            flex-shrink: 0;
+        }
+        .lib-category-badge.ocr { background: #22c55e15; color: #4ade80; }
+        .lib-category-badge.text { background: #3b82f615; color: #60a5fa; }
+
+        .quick-actions {
+            display: flex; gap: 8px; margin-bottom: 8px;
+        }
+        .quick-actions button {
+            font-size: 0.7rem; color: #555; background: none; border: none;
+            cursor: pointer; font-family: inherit; padding: 0;
+        }
+        .quick-actions button:hover { color: #7c5cfc; }
+
+        /* Button */
+        .btn-extract {
+            width: 100%; padding: 11px; border: none; border-radius: 10px;
+            font-size: 0.85rem; font-weight: 600; font-family: inherit;
+            cursor: pointer; transition: all 0.15s;
+            background: linear-gradient(135deg, #7c5cfc, #6345e0);
+            color: #fff; box-shadow: 0 2px 12px #7c5cfc30;
+        }
+        .btn-extract:disabled {
+            opacity: 0.3; cursor: not-allowed;
+            box-shadow: none;
+        }
+        .btn-extract:hover:not(:disabled) {
+            background: linear-gradient(135deg, #8b6ffd, #7050f0);
+            box-shadow: 0 4px 20px #7c5cfc40;
+            transform: translateY(-1px);
+        }
+        .btn-extract:active:not(:disabled) { transform: translateY(0); }
 
         /* Results area */
-        .results-area { flex: 1; overflow-y: auto; padding: 20px; }
-        .results-empty {
-            height: 100%; display: flex; align-items: center; justify-content: center;
-            color: #475569; font-size: 0.95rem; text-align: center; line-height: 1.6;
+        .results-area {
+            flex: 1; overflow-y: auto; padding: 28px 32px;
+            background: #0a0a0f;
         }
+        .results-area::-webkit-scrollbar { width: 6px; }
+        .results-area::-webkit-scrollbar-track { background: transparent; }
+        .results-area::-webkit-scrollbar-thumb { background: #1e1e2e; border-radius: 6px; }
+
+        .empty-state {
+            height: 100%; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 16px;
+        }
+        .empty-state .empty-icon {
+            width: 64px; height: 64px; border-radius: 16px;
+            background: #111118; border: 1px solid #1e1e2e;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .empty-state p { color: #333; font-size: 0.9rem; text-align: center; line-height: 1.6; }
 
         .results-grid { display: flex; flex-direction: column; gap: 16px; }
 
+        /* Result cards */
         .result-card {
-            background: #1e293b; border-radius: 10px; border: 1px solid #334155;
-            overflow: hidden;
+            background: #111118; border: 1px solid #1e1e2e;
+            border-radius: 12px; overflow: hidden;
+            transition: border-color 0.15s;
         }
-        .result-header {
+        .result-card:hover { border-color: #2a2a3a; }
+
+        .card-header {
             display: flex; align-items: center; justify-content: space-between;
-            padding: 12px 16px; border-bottom: 1px solid #334155; background: #1e293b;
+            padding: 14px 18px; border-bottom: 1px solid #1e1e2e;
         }
-        .result-header-left { display: flex; align-items: center; gap: 10px; }
-        .result-lib-name { font-weight: 600; font-size: 0.9rem; }
-        .result-badge {
-            font-size: 0.7rem; padding: 2px 8px; border-radius: 99px;
-            background: #818cf820; color: #818cf8; font-weight: 500;
+        .card-header-left { display: flex; align-items: center; gap: 10px; }
+        .card-title { font-size: 0.9rem; font-weight: 600; }
+        .card-badge {
+            font-size: 0.7rem; font-weight: 500; padding: 3px 10px;
+            border-radius: 6px; font-family: 'JetBrains Mono', monospace;
         }
-        .result-badge.error { background: #ef444420; color: #f87171; }
-        .result-badge.ocr { background: #22c55e20; color: #4ade80; }
-        .result-badge.warn { background: #f59e0b20; color: #fbbf24; }
-        .result-badge.success { background: #22c55e20; color: #4ade80; }
-        .result-stats { display: flex; gap: 16px; font-size: 0.75rem; color: #64748b; }
-        .result-stats span { white-space: nowrap; }
-        .result-body { position: relative; }
-        .result-body pre {
-            padding: 16px; margin: 0; font-size: 0.82rem; line-height: 1.6;
-            white-space: pre-wrap; word-break: break-word; color: #cbd5e1;
-            max-height: 400px; overflow-y: auto; font-family: 'SF Mono', 'Fira Code', monospace;
+        .card-badge.time { background: #7c5cfc15; color: #a78bfa; }
+        .card-badge.error { background: #ef444415; color: #f87171; }
+
+        .card-stats {
+            display: flex; gap: 16px; font-size: 0.73rem; color: #555;
+            font-family: 'JetBrains Mono', monospace;
         }
-        .result-body pre.error-text { color: #f87171; }
+
+        .card-body { position: relative; }
+        .card-body pre {
+            padding: 16px 18px; margin: 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem; line-height: 1.7;
+            white-space: pre-wrap; word-break: break-word;
+            color: #999; max-height: 420px; overflow-y: auto;
+        }
+        .card-body pre::-webkit-scrollbar { width: 4px; }
+        .card-body pre::-webkit-scrollbar-thumb { background: #1e1e2e; border-radius: 4px; }
+        .card-body pre.error-text { color: #f87171; }
+
         .copy-btn {
-            position: absolute; top: 8px; right: 8px;
-            background: #334155; border: none; color: #94a3b8; padding: 4px 10px;
-            border-radius: 6px; font-size: 0.73rem; cursor: pointer;
+            position: absolute; top: 10px; right: 10px;
+            background: #1a1a26; border: 1px solid #2a2a3a;
+            color: #666; padding: 4px 10px; border-radius: 6px;
+            font-size: 0.7rem; font-family: inherit; cursor: pointer;
+            transition: all 0.12s; opacity: 0;
         }
-        .copy-btn:hover { background: #475569; color: #e2e8f0; }
+        .card-body:hover .copy-btn { opacity: 1; }
+        .copy-btn:hover { background: #2a2a3a; color: #e4e4ed; }
 
-        /* Watermark results */
-        .wm-summary {
-            background: #1e293b; border-radius: 10px; border: 1px solid #334155;
-            padding: 20px; margin-bottom: 16px;
-        }
-        .wm-summary-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-        .wm-summary-icon { font-size: 2rem; }
-        .wm-summary-text h2 { font-size: 1.1rem; font-weight: 600; }
-        .wm-summary-text p { font-size: 0.83rem; color: #94a3b8; margin-top: 2px; }
-        .wm-summary-meta { display: flex; gap: 16px; font-size: 0.78rem; color: #64748b; }
-
-        .wm-finding {
-            background: #1e293b; border-radius: 10px; border: 1px solid #334155;
-            padding: 16px; margin-bottom: 10px;
-        }
-        .wm-finding-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-        .wm-finding-type {
-            font-size: 0.7rem; padding: 2px 8px; border-radius: 99px;
-            font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
-        }
-        .wm-finding-type.text { background: #818cf820; color: #818cf8; }
-        .wm-finding-type.image { background: #f59e0b20; color: #fbbf24; }
-        .wm-finding-type.annotation { background: #ec489920; color: #f472b6; }
-        .wm-finding-type.graphics_state { background: #06b6d420; color: #22d3ee; }
-        .wm-finding-conf { font-size: 0.7rem; font-weight: 500; }
-        .wm-finding-conf.high { color: #f87171; }
-        .wm-finding-conf.medium { color: #fbbf24; }
-        .wm-finding-conf.low { color: #94a3b8; }
-        .wm-finding-page { font-size: 0.75rem; color: #64748b; }
-        .wm-finding-text { font-size: 0.85rem; margin-bottom: 6px; font-family: 'SF Mono', 'Fira Code', monospace; color: #e2e8f0; }
-        .wm-finding-reasons { list-style: none; padding: 0; }
-        .wm-finding-reasons li {
-            font-size: 0.78rem; color: #94a3b8; padding: 2px 0 2px 16px;
-            position: relative;
-        }
-        .wm-finding-reasons li::before {
-            content: ''; position: absolute; left: 0; top: 10px;
-            width: 6px; height: 6px; border-radius: 50%; background: #475569;
-        }
-        .wm-finding-details {
-            display: flex; gap: 12px; margin-top: 8px; font-size: 0.73rem; color: #64748b;
-        }
-
+        /* Spinner */
         .spinner-overlay {
-            display: none; position: fixed; inset: 0; background: #0f172a80;
-            z-index: 100; align-items: center; justify-content: center;
+            display: none; position: fixed; inset: 0; z-index: 100;
+            background: #0a0a0fcc; backdrop-filter: blur(4px);
+            align-items: center; justify-content: center;
         }
         .spinner-overlay.active { display: flex; }
-        .spinner-box {
-            background: #1e293b; border: 1px solid #334155; border-radius: 12px;
-            padding: 32px 48px; text-align: center;
+        .spinner-box { text-align: center; }
+        .spinner-ring {
+            width: 40px; height: 40px; margin: 0 auto 16px;
+            border: 3px solid #1e1e2e; border-top-color: #7c5cfc;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
         }
-        .spinner-box .dots { font-size: 1.5rem; letter-spacing: 4px; }
-        .spinner-box p { margin-top: 8px; color: #94a3b8; font-size: 0.9rem; }
-
-        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
-        .dots span { animation: pulse 1.4s infinite; }
-        .dots span:nth-child(2) { animation-delay: 0.2s; }
-        .dots span:nth-child(3) { animation-delay: 0.4s; }
+        .spinner-box p { color: #666; font-size: 0.85rem; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="header-left">
-            <h1><span>PDF</span> Extraction Playground</h1>
-            <p>Compare text extraction and detect watermarks</p>
-        </div>
-        <div class="tabs">
-            <button class="tab active" data-tab="extract">Text Extraction</button>
-            <button class="tab" data-tab="watermark">Watermark Detection</button>
-        </div>
-    </div>
-
-    <div class="main">
+    <div class="app">
         <div class="sidebar">
-            <!-- File upload (shared) -->
-            <div>
-                <div class="section-label">PDF File</div>
-                <div class="drop-zone" id="dropZone">
-                    <div class="icon">&#128196;</div>
-                    <p>Drop PDF here or click to browse</p>
-                    <div class="filename" id="filename"></div>
-                    <div class="filesize" id="filesize"></div>
-                    <input type="file" id="fileInput" accept=".pdf">
-                </div>
+            <div class="logo">
+                <h1><span class="accent">PDF</span> Extraction Playground</h1>
+                <p>Compare text extraction across Python libraries</p>
             </div>
 
-            <!-- Extract tab options -->
-            <div class="sidebar-section active" id="sidebarExtract">
+            <div class="sidebar-content">
+                <!-- Upload -->
                 <div>
-                    <div class="section-label">Text Extraction Libraries</div>
-                    <div class="select-actions">
-                        <button onclick="selectAll(true)">Select all</button>
-                        <button onclick="selectAll(false)">Deselect all</button>
+                    <div class="label">Upload</div>
+                    <div class="drop-zone" id="dropZone">
+                        <div class="upload-icon">
+                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z"/>
+                            </svg>
+                        </div>
+                        <p>Drop PDF or <span>browse</span></p>
+                        <input type="file" id="fileInput" accept=".pdf">
+                        <div class="file-info" id="fileInfo">
+                            <div class="file-icon">
+                                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#c4b5fd" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
+                                </svg>
+                            </div>
+                            <div class="file-meta">
+                                <div class="file-name" id="fileName"></div>
+                                <div class="file-size" id="fileSize"></div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="lib-list" id="libList">
+                </div>
+
+                <!-- Text extraction libraries -->
+                <div>
+                    <div class="label">Text Extraction</div>
+                    <div class="quick-actions">
+                        <button onclick="toggleGroup('text', true)">Select all</button>
+                        <button onclick="toggleGroup('text', false)">Deselect</button>
+                    </div>
+                    <div class="lib-group">
                         {% for name, info in libraries.items() if info.category == 'text' %}
-                        <label class="lib-toggle selected" data-lib="{{ name }}">
+                        <label class="lib-item selected" data-lib="{{ name }}" data-cat="text">
                             <input type="checkbox" name="lib" value="{{ name }}" checked>
-                            <div class="lib-check">
-                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <div class="lib-checkbox">
+                                <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
                                     <path d="M2 6l3 3 5-5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                 </svg>
                             </div>
-                            <div class="lib-info">
-                                <div class="lib-name">{{ name }}</div>
-                                <div class="lib-desc">{{ info.description }}</div>
+                            <div class="lib-details">
+                                <div class="name">{{ name }}</div>
+                                <div class="desc">{{ info.description }}</div>
                             </div>
                         </label>
                         {% endfor %}
                     </div>
                 </div>
+
+                <!-- OCR libraries -->
                 <div>
-                    <div class="section-label">OCR Libraries (for scanned/handwritten PDFs)</div>
-                    <div class="lib-list">
+                    <div class="label">OCR (Scanned / Handwritten)</div>
+                    <div class="quick-actions">
+                        <button onclick="toggleGroup('ocr', true)">Select all</button>
+                        <button onclick="toggleGroup('ocr', false)">Deselect</button>
+                    </div>
+                    <div class="lib-group">
                         {% for name, info in libraries.items() if info.category == 'ocr' %}
-                        <label class="lib-toggle" data-lib="{{ name }}">
+                        <label class="lib-item" data-lib="{{ name }}" data-cat="ocr">
                             <input type="checkbox" name="lib" value="{{ name }}">
-                            <div class="lib-check">
-                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <div class="lib-checkbox">
+                                <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
                                     <path d="M2 6l3 3 5-5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                 </svg>
                             </div>
-                            <div class="lib-info">
-                                <div class="lib-name">{{ name }}</div>
-                                <div class="lib-desc">{{ info.description }}</div>
+                            <div class="lib-details">
+                                <div class="name">{{ name }}</div>
+                                <div class="desc">{{ info.description }}</div>
                             </div>
+                            <span class="lib-category-badge ocr">OCR</span>
                         </label>
                         {% endfor %}
                     </div>
                 </div>
-                <button class="btn" id="extractBtn" disabled>Extract &amp; Compare</button>
             </div>
 
-            <!-- Watermark tab options -->
-            <div class="sidebar-section" id="sidebarWatermark">
-                <div>
-                    <div class="section-label">Detection Methods</div>
-                    <div style="font-size: 0.8rem; color: #94a3b8; line-height: 1.6;">
-                        Scans for watermarks using:
-                        <ul style="margin-top: 6px; padding-left: 18px; color: #64748b;">
-                            <li>Low-opacity / rotated text</li>
-                            <li>Large diagonal text overlays</li>
-                            <li>Common keywords (CONFIDENTIAL, DRAFT...)</li>
-                            <li>Full-page background images</li>
-                            <li>Transparent graphics states</li>
-                            <li>Watermark annotations</li>
-                        </ul>
-                    </div>
-                </div>
-                <button class="btn secondary" id="watermarkBtn" disabled>Detect Watermarks</button>
+            <div class="sidebar-footer">
+                <button class="btn-extract" id="extractBtn" disabled>Extract & Compare</button>
             </div>
         </div>
 
         <div class="results-area">
-            <div class="results-empty" id="emptyState">
-                Upload a PDF and select a tool from the tabs above.
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#333" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m5.231 13.481L15 17.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v16.5c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Zm3.75 11.625a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/>
+                    </svg>
+                </div>
+                <p>Upload a PDF and select libraries<br>to compare extraction results</p>
             </div>
             <div class="results-grid" id="results"></div>
         </div>
@@ -292,35 +348,21 @@
 
     <div class="spinner-overlay" id="spinner">
         <div class="spinner-box">
-            <div class="dots"><span>&#9679;</span><span>&#9679;</span><span>&#9679;</span></div>
-            <p id="spinnerText">Processing...</p>
+            <div class="spinner-ring"></div>
+            <p id="spinnerText">Extracting text...</p>
         </div>
     </div>
 
     <script>
-        const dropZone = document.getElementById('dropZone');
-        const fileInput = document.getElementById('fileInput');
-        const extractBtn = document.getElementById('extractBtn');
-        const watermarkBtn = document.getElementById('watermarkBtn');
-        const spinner = document.getElementById('spinner');
-        const spinnerText = document.getElementById('spinnerText');
-        const resultsDiv = document.getElementById('results');
-        const emptyState = document.getElementById('emptyState');
-        const filenameDiv = document.getElementById('filename');
-        const filesizeDiv = document.getElementById('filesize');
+        const $ = id => document.getElementById(id);
+        const dropZone = $('dropZone');
+        const fileInput = $('fileInput');
+        const extractBtn = $('extractBtn');
+        const spinner = $('spinner');
+        const spinnerText = $('spinnerText');
+        const resultsDiv = $('results');
+        const emptyState = $('emptyState');
         let selectedFile = null;
-        let currentTab = 'extract';
-
-        // Tabs
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                currentTab = tab.dataset.tab;
-                document.getElementById('sidebarExtract').classList.toggle('active', currentTab === 'extract');
-                document.getElementById('sidebarWatermark').classList.toggle('active', currentTab === 'watermark');
-            });
-        });
 
         // File handling
         dropZone.addEventListener('click', () => fileInput.click());
@@ -336,21 +378,23 @@
         function setFile(file) {
             if (!file.name.toLowerCase().endsWith('.pdf')) return;
             selectedFile = file;
-            filenameDiv.textContent = file.name;
-            filesizeDiv.textContent = formatBytes(file.size);
+            $('fileName').textContent = file.name;
+            $('fileSize').textContent = fmtBytes(file.size);
+            $('fileInfo').classList.add('visible');
             updateBtn();
         }
 
-        function formatBytes(b) {
+        function fmtBytes(b) {
             if (b < 1024) return b + ' B';
             if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
             return (b / 1048576).toFixed(1) + ' MB';
         }
 
+        function fmtTime(ms) { return (ms / 1000).toFixed(2) + ' s'; }
+
         // Library toggles
-        document.querySelectorAll('.lib-toggle').forEach(el => {
+        document.querySelectorAll('.lib-item').forEach(el => {
             el.addEventListener('click', e => {
-                if (e.target.tagName === 'A') return;
                 const cb = el.querySelector('input');
                 cb.checked = !cb.checked;
                 el.classList.toggle('selected', cb.checked);
@@ -358,8 +402,8 @@
             });
         });
 
-        function selectAll(checked) {
-            document.querySelectorAll('.lib-toggle').forEach(el => {
+        function toggleGroup(cat, checked) {
+            document.querySelectorAll(`.lib-item[data-cat="${cat}"]`).forEach(el => {
                 el.querySelector('input').checked = checked;
                 el.classList.toggle('selected', checked);
             });
@@ -367,12 +411,11 @@
         }
 
         function getSelectedLibs() {
-            return [...document.querySelectorAll('.lib-toggle input:checked')].map(cb => cb.value);
+            return [...document.querySelectorAll('.lib-item input:checked')].map(cb => cb.value);
         }
 
         function updateBtn() {
             extractBtn.disabled = !selectedFile || getSelectedLibs().length === 0;
-            watermarkBtn.disabled = !selectedFile;
         }
 
         // Extract
@@ -381,154 +424,70 @@
             const libs = getSelectedLibs();
             if (!libs.length) return;
 
-            showSpinner('Extracting text...');
+            spinnerText.textContent = 'Extracting text...';
+            spinner.classList.add('active');
             resultsDiv.innerHTML = '';
             emptyState.style.display = 'none';
 
-            const formData = new FormData();
-            formData.append('file', selectedFile);
-            libs.forEach(l => formData.append('libraries', l));
+            const fd = new FormData();
+            fd.append('file', selectedFile);
+            libs.forEach(l => fd.append('libraries', l));
 
             try {
-                const resp = await fetch('/extract', { method: 'POST', body: formData });
+                const resp = await fetch('/extract', { method: 'POST', body: fd });
                 const data = await resp.json();
                 if (data.error) {
                     showError(data.error);
                 } else {
-                    renderExtractResults(data);
+                    renderResults(data);
                 }
             } catch (err) {
                 showError(err.message);
             }
-            hideSpinner();
+            spinner.classList.remove('active');
         });
 
-        // Watermark
-        watermarkBtn.addEventListener('click', async () => {
-            if (!selectedFile) return;
-
-            showSpinner('Scanning for watermarks...');
-            resultsDiv.innerHTML = '';
-            emptyState.style.display = 'none';
-
-            const formData = new FormData();
-            formData.append('file', selectedFile);
-
-            try {
-                const resp = await fetch('/watermark', { method: 'POST', body: formData });
-                const data = await resp.json();
-                if (data.error) {
-                    showError(data.error);
-                } else {
-                    renderWatermarkResults(data);
-                }
-            } catch (err) {
-                showError(err.message);
-            }
-            hideSpinner();
-        });
-
-        function fmtTime(ms) {
-            return (ms / 1000).toFixed(2) + ' s';
-        }
-
-        function showSpinner(text) { spinnerText.textContent = text; spinner.classList.add('active'); }
-        function hideSpinner() { spinner.classList.remove('active'); }
         function showError(msg) {
-            resultsDiv.innerHTML = `<div class="result-card"><div class="result-header"><span class="result-lib-name">Error</span></div><div class="result-body"><pre class="error-text">${esc(msg)}</pre></div></div>`;
+            resultsDiv.innerHTML = `<div class="result-card"><div class="card-header"><span class="card-title">Error</span></div><div class="card-body"><pre class="error-text">${esc(msg)}</pre></div></div>`;
         }
 
-        function renderExtractResults(data) {
+        function renderResults(data) {
             resultsDiv.innerHTML = '';
-            for (const [lib, result] of Object.entries(data)) {
+            for (const [lib, r] of Object.entries(data)) {
                 const card = document.createElement('div');
                 card.className = 'result-card';
 
-                if (result.error) {
+                if (r.error) {
                     card.innerHTML = `
-                        <div class="result-header">
-                            <div class="result-header-left">
-                                <span class="result-lib-name">${esc(lib)}</span>
-                                <span class="result-badge error">error</span>
+                        <div class="card-header">
+                            <div class="card-header-left">
+                                <span class="card-title">${esc(lib)}</span>
+                                <span class="card-badge error">error</span>
                             </div>
                         </div>
-                        <div class="result-body"><pre class="error-text">${esc(result.error)}</pre></div>`;
+                        <div class="card-body"><pre class="error-text">${esc(r.error)}</pre></div>`;
                 } else {
-                    const chars = result.text.length;
-                    const words = result.text.trim().split(/\s+/).filter(Boolean).length;
-                    const lines = result.text.split('\n').length;
+                    const chars = r.text.length;
+                    const words = r.text.trim().split(/\s+/).filter(Boolean).length;
+                    const lines = r.text.split('\n').length;
                     card.innerHTML = `
-                        <div class="result-header">
-                            <div class="result-header-left">
-                                <span class="result-lib-name">${esc(lib)}</span>
-                                <span class="result-badge">${fmtTime(result.time_ms)}</span>
+                        <div class="card-header">
+                            <div class="card-header-left">
+                                <span class="card-title">${esc(lib)}</span>
+                                <span class="card-badge time">${fmtTime(r.time_ms)}</span>
                             </div>
-                            <div class="result-stats">
+                            <div class="card-stats">
                                 <span>${chars.toLocaleString()} chars</span>
                                 <span>${words.toLocaleString()} words</span>
                                 <span>${lines.toLocaleString()} lines</span>
                             </div>
                         </div>
-                        <div class="result-body">
+                        <div class="card-body">
                             <button class="copy-btn" onclick="copyText(this)">Copy</button>
-                            <pre>${esc(result.text)}</pre>
+                            <pre>${esc(r.text)}</pre>
                         </div>`;
                 }
                 resultsDiv.appendChild(card);
-            }
-        }
-
-        function renderWatermarkResults(data) {
-            resultsDiv.innerHTML = '';
-
-            // Summary card
-            const summary = document.createElement('div');
-            summary.className = 'wm-summary';
-            const icon = data.found ? '&#9888;&#65039;' : '&#9989;';
-            const title = data.found ? `${data.count} watermark signal${data.count !== 1 ? 's' : ''} detected` : 'No watermarks detected';
-            const subtitle = data.found ? 'Review the findings below for details' : 'No obvious watermark patterns found in this PDF';
-            summary.innerHTML = `
-                <div class="wm-summary-header">
-                    <div class="wm-summary-icon">${icon}</div>
-                    <div class="wm-summary-text">
-                        <h2>${title}</h2>
-                        <p>${subtitle}</p>
-                    </div>
-                </div>
-                <div class="wm-summary-meta">
-                    <span>Scan time: ${fmtTime(data.time_ms)}</span>
-                    <span>Findings: ${data.count}</span>
-                </div>`;
-            resultsDiv.appendChild(summary);
-
-            // Individual findings
-            if (data.findings) {
-                for (const f of data.findings) {
-                    const el = document.createElement('div');
-                    el.className = 'wm-finding';
-
-                    let detailsHtml = '';
-                    if (f.font_size || f.opacity !== undefined || f.rotated !== undefined) {
-                        const parts = [];
-                        if (f.font_size) parts.push(`Font: ${f.font_size}pt`);
-                        if (f.opacity !== undefined) parts.push(`Opacity: ${f.opacity}`);
-                        if (f.rotated !== undefined) parts.push(`Rotated: ${f.rotated ? 'yes' : 'no'}`);
-                        detailsHtml = `<div class="wm-finding-details">${parts.map(p => `<span>${esc(p)}</span>`).join('')}</div>`;
-                    }
-
-                    el.innerHTML = `
-                        <div class="wm-finding-header">
-                            <span class="wm-finding-type ${esc(f.type)}">${esc(f.type)}</span>
-                            <span class="wm-finding-conf ${esc(f.confidence || '')}">${esc(f.confidence || '')} confidence</span>
-                            <span class="wm-finding-page">Page ${f.page}</span>
-                        </div>
-                        <div class="wm-finding-text">${esc(f.text)}</div>
-                        <ul class="wm-finding-reasons">
-                            ${(f.reasons || []).map(r => `<li>${esc(r)}</li>`).join('')}
-                        </ul>
-                        ${detailsHtml}`;
-                    resultsDiv.appendChild(el);
-                }
             }
         }
 
@@ -541,7 +500,7 @@
 
         function esc(s) {
             const d = document.createElement('div');
-            d.textContent = String(s);
+            d.textContent = s;
             return d.innerHTML;
         }
     </script>
