@@ -53,10 +53,19 @@ if "_lzma" not in sys.modules:
         _fake._decode_filter_properties = lambda fid, props: {}
         sys.modules["_lzma"] = _fake
 
+from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, Response
+
+load_dotenv()
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
+
+# AWS config
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+AWS_REGION = os.environ.get("AWS_REGION", "eu-central-1")
+S3_BUCKET = os.environ.get("S3_BUCKET", "arctis-core")
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "extractions.db")
 
@@ -327,6 +336,104 @@ def extract_with_pymupdf_ocr(pdf_bytes: bytes, pages=None, lang=None) -> str:
     return "\n\n".join(result)
 
 
+def extract_with_textract(pdf_bytes: bytes, pages=None, lang=None) -> str:
+    """Extract text using AWS Textract. Uploads to S3 for async processing of multi-page PDFs."""
+    import boto3
+
+    session = boto3.Session(
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        region_name=AWS_REGION,
+    )
+    textract = session.client("textract")
+
+    # Textract sync API only supports single-page PDFs and images.
+    # For multi-page PDFs, use async via S3.
+    from pypdf import PdfReader
+    reader = PdfReader(io.BytesIO(pdf_bytes))
+    total_pages = len(reader.pages)
+
+    if total_pages == 1 and (pages is None or 0 in pages):
+        # Sync API for single page
+        response = textract.detect_document_text(
+            Document={"Bytes": pdf_bytes}
+        )
+        lines = [
+            block["Text"]
+            for block in response["Blocks"]
+            if block["BlockType"] == "LINE"
+        ]
+        return "--- Page 1 ---\n" + "\n".join(lines)
+
+    # Async API via S3 for multi-page
+    s3 = session.client("s3")
+    s3_key = f"textract-tmp/{uuid.uuid4()}.pdf"
+
+    # If specific pages requested, create a subset PDF
+    if pages is not None:
+        from pypdf import PdfWriter
+        writer = PdfWriter()
+        for i in pages:
+            if i < total_pages:
+                writer.add_page(reader.pages[i])
+        buf = io.BytesIO()
+        writer.write(buf)
+        upload_bytes = buf.getvalue()
+        page_mapping = {idx: orig + 1 for idx, orig in enumerate(pages)}
+    else:
+        upload_bytes = pdf_bytes
+        page_mapping = {i: i + 1 for i in range(total_pages)}
+
+    s3.put_object(Bucket=S3_BUCKET, Key=s3_key, Body=upload_bytes)
+
+    try:
+        response = textract.start_document_text_detection(
+            DocumentLocation={"S3Object": {"Bucket": S3_BUCKET, "Name": s3_key}}
+        )
+        job_id = response["JobId"]
+
+        # Poll for completion
+        import time as _time
+        while True:
+            result = textract.get_document_text_detection(JobId=job_id)
+            status = result["JobStatus"]
+            if status == "SUCCEEDED":
+                break
+            elif status == "FAILED":
+                raise RuntimeError(f"Textract job failed: {result.get('StatusMessage', 'Unknown error')}")
+            _time.sleep(1)
+
+        # Collect all pages (paginated results)
+        all_blocks = result["Blocks"]
+        next_token = result.get("NextToken")
+        while next_token:
+            result = textract.get_document_text_detection(JobId=job_id, NextToken=next_token)
+            all_blocks.extend(result["Blocks"])
+            next_token = result.get("NextToken")
+
+        # Group lines by page
+        pages_text = {}
+        for block in all_blocks:
+            if block["BlockType"] == "LINE":
+                pg = block.get("Page", 1)
+                if pg not in pages_text:
+                    pages_text[pg] = []
+                pages_text[pg].append(block["Text"])
+
+        output = []
+        for pg_idx in sorted(pages_text.keys()):
+            orig_page = page_mapping.get(pg_idx - 1, pg_idx)
+            output.append(f"--- Page {orig_page} ---\n" + "\n".join(pages_text[pg_idx]))
+        return "\n\n".join(output)
+
+    finally:
+        # Clean up S3
+        try:
+            s3.delete_object(Bucket=S3_BUCKET, Key=s3_key)
+        except Exception:
+            pass
+
+
 # --- Table extraction ---
 
 def extract_tables(pdf_bytes: bytes, pages=None) -> list[dict]:
@@ -401,6 +508,11 @@ EXTRACTORS = {
         "func": extract_with_pymupdf_ocr,
         "description": "PyMuPDF built-in OCR via Tesseract",
         "category": "ocr",
+    },
+    "aws-textract": {
+        "func": extract_with_textract,
+        "description": "AWS Textract, cloud OCR with high accuracy",
+        "category": "cloud",
     },
 }
 
@@ -482,7 +594,8 @@ def _run_extraction(pdf_bytes, filename, selected, pages_str, lang, mode, batch_
             func = EXTRACTORS[name]["func"]
             try:
                 start = time.perf_counter()
-                text = func(pdf_bytes, pages=pages, lang=lang if EXTRACTORS[name]["category"] == "ocr" else None)
+                cat = EXTRACTORS[name]["category"]
+                text = func(pdf_bytes, pages=pages, lang=lang if cat in ("ocr", "cloud") else None)
                 elapsed = time.perf_counter() - start
                 results[name] = {"text": text, "error": None, "time_ms": round(elapsed * 1000, 1)}
             except Exception:

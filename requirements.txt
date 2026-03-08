@@ -6,3 +6,5 @@ pymupdf
 Pillow
 pytesseract
 easyocr
+boto3
+python-dotenv

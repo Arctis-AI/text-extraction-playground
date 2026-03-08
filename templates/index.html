@@ -71,6 +71,7 @@
         .lib-details .desc{font-size:.66rem;color:#555;margin-top:1px}
         .lib-cat{font-size:.56rem;font-weight:600;padding:1px 5px;border-radius:3px;text-transform:uppercase;letter-spacing:.04em;flex-shrink:0}
         .lib-cat.ocr{background:#22c55e15;color:#4ade80}
+        .lib-cat.cloud{background:#f59e0b15;color:#fbbf24}
 
         .quick-actions{display:flex;gap:8px;margin-bottom:4px}
         .quick-actions button{font-size:.66rem;color:#555;background:none;border:none;cursor:pointer;font-family:inherit;padding:0}
@@ -294,6 +295,21 @@
                         {% endfor %}
                     </div>
                 </div>
+
+                <!-- Cloud libraries -->
+                <div id="cloudLibSection">
+                    <div class="label">Cloud Services</div>
+                    <div class="lib-group">
+                        {% for name, info in libraries.items() if info.category == 'cloud' %}
+                        <label class="lib-item" data-lib="{{ name }}" data-cat="cloud">
+                            <input type="checkbox" name="lib" value="{{ name }}">
+                            <div class="lib-checkbox"><svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <div class="lib-details"><div class="name">{{ name }}</div><div class="desc">{{ info.description }}</div></div>
+                            <span class="lib-cat cloud">CLOUD</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
             <div class="sidebar-footer">
                 <button class="btn-extract" id="extractBtn" disabled>Extract & Compare</button>
@@ -411,14 +427,11 @@
         function setMode(m){
             currentMode=m;
             document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
-            const textLibs=document.querySelectorAll('.lib-item[data-cat="text"]');
-            const ocrLibs=document.querySelectorAll('.lib-item[data-cat="ocr"]');
+            const allLibs=document.querySelectorAll('.lib-item');
             if(m==='table'){
-                textLibs.forEach(el=>el.classList.add('disabled'));
-                ocrLibs.forEach(el=>el.classList.add('disabled'));
+                allLibs.forEach(el=>el.classList.add('disabled'));
             }else{
-                textLibs.forEach(el=>el.classList.remove('disabled'));
-                ocrLibs.forEach(el=>el.classList.remove('disabled'));
+                allLibs.forEach(el=>el.classList.remove('disabled'));
             }
             updateBtn();
         }
