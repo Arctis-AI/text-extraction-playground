@@ -1,11 +1,12 @@
 # PDF Extraction Playground
 
-A web app to compare PDF text extraction across multiple Python libraries, with OCR support for scanned/handwritten documents, table extraction, diff view, and more.
+A web app to compare PDF text extraction across multiple Python libraries, with OCR support for scanned/handwritten documents, cloud extraction services, table extraction, diff view, and more.
 
 ## Features
 
 - **Text Extraction** — Compare output from 4 text-based libraries (pypdf, pdfplumber, pdfminer, pymupdf)
 - **OCR Extraction** — Extract text from scanned/image-based PDFs using Tesseract, EasyOCR, or PyMuPDF OCR
+- **Cloud Extraction** — Extract via AWS Textract or LlamaParse (LlamaIndex) for production-grade results
 - **Table Extraction** — Extract tables as structured data with CSV download (via pdfplumber)
 - **PDF Metadata** — View page count, author, creator, creation date, encrypted status, and image detection
 - **Scanned PDF Detection** — Auto-detects image-based pages and suggests OCR
@@ -39,7 +40,7 @@ sudo apt install tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng
 ## Setup
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/Arctis-AI/text-extraction-playground.git
 cd pypdf_miniapp
 
 python -m venv venv
@@ -47,6 +48,23 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 pip install -r requirements.txt
 ```
+
+### Environment Variables
+
+Create a `.env` file in the project root for cloud extraction services:
+
+```env
+# AWS Textract (required for aws-textract extractor)
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_REGION=eu-central-1
+S3_BUCKET=your-s3-bucket
+
+# LlamaIndex LlamaParse (required for llama-parse extractor)
+LLAMA_CLOUD_API_KEY=your-llama-cloud-api-key
+```
+
+Cloud extractors will show an error message if their credentials are not configured. All other extractors work without any environment variables.
 
 ## Run
 
@@ -62,7 +80,7 @@ Open http://localhost:5001 in your browser.
 # Extract text with specific libraries
 curl -X POST http://localhost:5001/api/extract \
   -F "file=@document.pdf" \
-  -F "libraries=pypdf,pdfplumber,tesseract" \
+  -F "libraries=pypdf,pdfplumber,tesseract,aws-textract,llama-parse" \
   -F "pages=1-3" \
   -F "lang=deu+eng" \
   -F "mode=text"
@@ -84,6 +102,8 @@ curl -X POST http://localhost:5001/api/extract \
 | tesseract | OCR | Classic OCR engine |
 | easyocr | OCR | Deep learning, better with handwriting |
 | pymupdf-ocr | OCR | PyMuPDF built-in OCR via Tesseract |
+| aws-textract | Cloud | AWS Textract — high accuracy, supports async for multi-page PDFs |
+| llama-parse | Cloud | LlamaIndex LlamaParse — AI-powered document parsing |
 
 ## Project Structure
 
@@ -91,8 +111,9 @@ curl -X POST http://localhost:5001/api/extract \
 pypdf_miniapp/
 ├── app.py              # Flask backend
 ├── templates/
-│   └── index.html      # Frontend UI
+│   └── index.html      # Frontend UI (pixel game theme)
 ├── requirements.txt
+├── .env                # Environment variables (not committed)
 ├── extractions.db      # SQLite database (created at runtime)
 └── README.md
 ```

@@ -4,226 +4,225 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Extraction Playground</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:'Inter',-apple-system,sans-serif;background:#0a0a0f;color:#e4e4ed;min-height:100vh;overflow:hidden}
+        body{font-family:'IBM Plex Mono',monospace;background:#1a1a2e;color:#c8c8d4;min-height:100vh;overflow:hidden;image-rendering:pixelated}
         .app{display:flex;height:100vh}
 
         /* Sidebar */
-        .sidebar{width:330px;min-width:330px;background:#111118;border-right:1px solid #1e1e2e;display:flex;flex-direction:column;overflow:hidden}
-        .logo{padding:20px 22px 16px;border-bottom:1px solid #1e1e2e}
-        .logo h1{font-size:1.05rem;font-weight:700;letter-spacing:-.02em}
-        .logo h1 .accent{color:#7c5cfc}
-        .logo p{font-size:.72rem;color:#555;margin-top:3px}
-        .sidebar-content{flex:1;overflow-y:auto;padding:16px 22px;display:flex;flex-direction:column;gap:18px}
-        .sidebar-content::-webkit-scrollbar{width:3px}
-        .sidebar-content::-webkit-scrollbar-thumb{background:#2a2a3a;border-radius:3px}
-        .sidebar-footer{padding:14px 22px;border-top:1px solid #1e1e2e;display:flex;flex-direction:column;gap:8px}
+        .sidebar{width:320px;min-width:320px;background:#16213e;border-right:2px solid #0f3460;display:flex;flex-direction:column;overflow:hidden}
+        .logo{padding:16px 18px 14px;border-bottom:2px solid #0f3460}
+        .logo h1{font-family:'Press Start 2P',monospace;font-size:.6rem;color:#e94560;letter-spacing:.05em;line-height:1.6}
+        .logo p{font-size:.65rem;color:#53565a;margin-top:6px}
+        .sidebar-content{flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:16px}
+        .sidebar-content::-webkit-scrollbar{width:4px}
+        .sidebar-content::-webkit-scrollbar-track{background:#16213e}
+        .sidebar-content::-webkit-scrollbar-thumb{background:#0f3460}
+        .sidebar-footer{padding:12px 18px;border-top:2px solid #0f3460}
 
-        .label{font-size:.62rem;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#444;margin-bottom:8px}
+        .label{font-family:'Press Start 2P',monospace;font-size:.45rem;text-transform:uppercase;letter-spacing:.12em;color:#53565a;margin-bottom:8px}
 
         /* Drop zone */
-        .drop-zone{border:1.5px dashed #2a2a3a;border-radius:10px;padding:24px 14px;text-align:center;cursor:pointer;transition:all .2s;background:linear-gradient(135deg,#13131a,#111118)}
-        .drop-zone:hover{border-color:#7c5cfc40;background:#7c5cfc08}
-        .drop-zone.dragover{border-color:#7c5cfc;background:#7c5cfc10}
-        .drop-zone .upload-icon{width:36px;height:36px;margin:0 auto 10px;border-radius:8px;background:#1a1a26;display:flex;align-items:center;justify-content:center}
-        .drop-zone .upload-icon svg{opacity:.5}
-        .drop-zone:hover .upload-icon svg{opacity:.8}
-        .drop-zone p{font-size:.78rem;color:#666}
-        .drop-zone p span{color:#7c5cfc;font-weight:500}
+        .drop-zone{border:2px dashed #0f3460;padding:20px 14px;text-align:center;cursor:pointer;transition:all .15s;background:#1a1a2e}
+        .drop-zone:hover,.drop-zone.dragover{border-color:#e94560;background:#e9456008}
+        .drop-zone .upload-icon{width:32px;height:32px;margin:0 auto 8px;border:2px solid #0f3460;display:flex;align-items:center;justify-content:center}
+        .drop-zone .upload-icon svg{opacity:.4}
+        .drop-zone:hover .upload-icon svg{opacity:.7}
+        .drop-zone:hover .upload-icon{border-color:#e94560}
+        .drop-zone p{font-size:.7rem;color:#53565a}
+        .drop-zone p span{color:#e94560}
         .drop-zone input{display:none}
 
-        .file-info{display:none;margin-top:10px;padding:8px 10px;background:#7c5cfc10;border:1px solid #7c5cfc30;border-radius:7px;text-align:left}
+        .file-info{display:none;margin-top:8px;padding:6px 8px;background:#0f346020;border:1px solid #0f3460;text-align:left}
         .file-info.visible{display:flex;align-items:center;gap:8px}
-        .file-icon{width:28px;height:28px;border-radius:5px;background:#7c5cfc20;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .file-icon{width:24px;height:24px;border:1px solid #0f3460;display:flex;align-items:center;justify-content:center;flex-shrink:0}
         .file-meta{flex:1;min-width:0}
-        .file-name{font-size:.76rem;font-weight:600;color:#c4b5fd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .file-size{font-size:.66rem;color:#666;margin-top:1px}
-        .file-count{font-size:.66rem;color:#7c5cfc;margin-top:1px}
+        .file-name{font-size:.7rem;color:#e94560;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .file-size{font-size:.6rem;color:#53565a;margin-top:1px}
+        .file-count{font-size:.6rem;color:#53565a;margin-top:1px}
 
         /* Inputs */
-        .input-row{display:flex;gap:8px}
-        .input-field{flex:1;padding:7px 10px;background:#13131a;border:1px solid #2a2a3a;border-radius:7px;color:#e4e4ed;font-size:.78rem;font-family:inherit;outline:none;transition:border-color .15s}
-        .input-field:focus{border-color:#7c5cfc60}
-        .input-field::placeholder{color:#444}
-        select.input-field{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:28px}
+        .input-row{display:flex;gap:6px}
+        .input-field{flex:1;padding:6px 8px;background:#1a1a2e;border:2px solid #0f3460;color:#c8c8d4;font-size:.7rem;font-family:'IBM Plex Mono',monospace;outline:none}
+        .input-field:focus{border-color:#e94560}
+        .input-field::placeholder{color:#3a3a4e}
+        select.input-field{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2353565a' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;padding-right:24px}
 
         /* Mode toggle */
-        .mode-toggle{display:flex;background:#13131a;border-radius:8px;padding:3px;border:1px solid #1e1e2e}
-        .mode-btn{flex:1;padding:6px;border:none;border-radius:6px;background:transparent;color:#666;font-size:.73rem;font-weight:500;font-family:inherit;cursor:pointer;transition:all .15s}
-        .mode-btn.active{background:#7c5cfc;color:#fff}
+        .mode-toggle{display:flex;border:2px solid #0f3460}
+        .mode-btn{flex:1;padding:5px;border:none;background:transparent;color:#53565a;font-size:.65rem;font-family:'IBM Plex Mono',monospace;cursor:pointer;transition:all .1s}
+        .mode-btn.active{background:#e94560;color:#1a1a2e}
+        .mode-btn:first-child{border-right:2px solid #0f3460}
 
         /* Library toggles */
-        .lib-group{display:flex;flex-direction:column;gap:4px}
-        .lib-item{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:7px;cursor:pointer;border:1px solid transparent;transition:all .12s}
-        .lib-item:hover{background:#1a1a26}
-        .lib-item.selected{background:#7c5cfc0a;border-color:#7c5cfc30}
-        .lib-item.disabled{opacity:.3;pointer-events:none}
+        .lib-group{display:flex;flex-direction:column;gap:2px}
+        .lib-item{display:flex;align-items:center;gap:8px;padding:5px 7px;cursor:pointer;border:1px solid transparent;transition:all .1s}
+        .lib-item:hover{background:#0f346020}
+        .lib-item.selected{background:#0f346030;border-color:#0f3460}
+        .lib-item.disabled{opacity:.25;pointer-events:none}
         .lib-item input{display:none}
-        .lib-checkbox{width:14px;height:14px;border-radius:3px;border:1.5px solid #333;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .12s}
-        .lib-item.selected .lib-checkbox{background:#7c5cfc;border-color:#7c5cfc}
-        .lib-checkbox svg{opacity:0;transition:opacity .1s}
+        .lib-checkbox{width:12px;height:12px;border:2px solid #53565a;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+        .lib-item.selected .lib-checkbox{background:#e94560;border-color:#e94560}
+        .lib-checkbox svg{opacity:0}
         .lib-item.selected .lib-checkbox svg{opacity:1}
         .lib-details{flex:1;min-width:0}
-        .lib-details .name{font-size:.78rem;font-weight:600}
-        .lib-details .desc{font-size:.66rem;color:#555;margin-top:1px}
-        .lib-cat{font-size:.56rem;font-weight:600;padding:1px 5px;border-radius:3px;text-transform:uppercase;letter-spacing:.04em;flex-shrink:0}
-        .lib-cat.ocr{background:#22c55e15;color:#4ade80}
-        .lib-cat.cloud{background:#f59e0b15;color:#fbbf24}
+        .lib-details .name{font-size:.7rem}
+        .lib-details .desc{font-size:.58rem;color:#53565a;margin-top:1px}
+        .lib-cat{font-family:'Press Start 2P',monospace;font-size:.35rem;padding:2px 4px;border:1px solid;flex-shrink:0}
+        .lib-cat.ocr{border-color:#4ade80;color:#4ade80}
+        .lib-cat.cloud{border-color:#fbbf24;color:#fbbf24}
 
         .quick-actions{display:flex;gap:8px;margin-bottom:4px}
-        .quick-actions button{font-size:.66rem;color:#555;background:none;border:none;cursor:pointer;font-family:inherit;padding:0}
-        .quick-actions button:hover{color:#7c5cfc}
+        .quick-actions button{font-size:.6rem;color:#53565a;background:none;border:none;cursor:pointer;font-family:'IBM Plex Mono',monospace;padding:0;text-decoration:underline}
+        .quick-actions button:hover{color:#e94560}
 
-        /* Language checkboxes */
-        .lang-grid{display:flex;flex-wrap:wrap;gap:4px}
-        .lang-chip{padding:4px 8px;border-radius:5px;border:1px solid #2a2a3a;font-size:.68rem;cursor:pointer;transition:all .12s;user-select:none}
-        .lang-chip:hover{border-color:#7c5cfc40}
-        .lang-chip.selected{background:#7c5cfc15;border-color:#7c5cfc40;color:#c4b5fd}
+        /* Language chips */
+        .lang-grid{display:flex;flex-wrap:wrap;gap:3px}
+        .lang-chip{padding:3px 6px;border:1px solid #0f3460;font-size:.6rem;cursor:pointer;transition:all .1s;user-select:none}
+        .lang-chip:hover{border-color:#e94560}
+        .lang-chip.selected{background:#e9456020;border-color:#e94560;color:#e94560}
         .lang-chip input{display:none}
 
         /* Buttons */
-        .btn-extract{width:100%;padding:10px;border:none;border-radius:9px;font-size:.82rem;font-weight:600;font-family:inherit;cursor:pointer;transition:all .15s;background:linear-gradient(135deg,#7c5cfc,#6345e0);color:#fff;box-shadow:0 2px 12px #7c5cfc30}
-        .btn-extract:disabled{opacity:.3;cursor:not-allowed;box-shadow:none}
-        .btn-extract:hover:not(:disabled){box-shadow:0 4px 20px #7c5cfc40;transform:translateY(-1px)}
-        .btn-sm{padding:5px 12px;border-radius:6px;border:1px solid #2a2a3a;background:#13131a;color:#999;font-size:.7rem;font-family:inherit;cursor:pointer;transition:all .12s}
-        .btn-sm:hover{border-color:#7c5cfc40;color:#e4e4ed}
-        .btn-sm.active{background:#7c5cfc20;border-color:#7c5cfc40;color:#c4b5fd}
+        .btn-extract{width:100%;padding:8px;border:2px solid #e94560;background:#e94560;color:#1a1a2e;font-family:'Press Start 2P',monospace;font-size:.5rem;cursor:pointer;letter-spacing:.05em;transition:all .1s}
+        .btn-extract:disabled{opacity:.25;cursor:not-allowed}
+        .btn-extract:hover:not(:disabled){background:#c73651;border-color:#c73651}
+        .btn-sm{padding:4px 10px;border:1px solid #0f3460;background:transparent;color:#53565a;font-size:.65rem;font-family:'IBM Plex Mono',monospace;cursor:pointer;transition:all .1s}
+        .btn-sm:hover{border-color:#e94560;color:#c8c8d4}
 
         /* Results area */
-        .results-area{flex:1;overflow-y:auto;display:flex;flex-direction:column}
-        .results-area::-webkit-scrollbar{width:5px}
-        .results-area::-webkit-scrollbar-thumb{background:#1e1e2e;border-radius:5px}
+        .results-area{flex:1;overflow-y:auto;display:flex;flex-direction:column;background:#1a1a2e}
+        .results-area::-webkit-scrollbar{width:4px}
+        .results-area::-webkit-scrollbar-thumb{background:#0f3460}
 
-        .results-toolbar{padding:14px 28px;border-bottom:1px solid #1e1e2e;display:none;align-items:center;gap:10px;flex-wrap:wrap;background:#111118}
+        .results-toolbar{padding:10px 24px;border-bottom:2px solid #0f3460;display:none;align-items:center;gap:8px;flex-wrap:wrap;background:#16213e}
         .results-toolbar.visible{display:flex}
-        .results-toolbar .toolbar-left{display:flex;align-items:center;gap:8px;flex:1}
-        .results-toolbar .toolbar-right{display:flex;align-items:center;gap:6px}
+        .results-toolbar .toolbar-left{display:flex;align-items:center;gap:6px;flex:1}
+        .results-toolbar .toolbar-right{display:flex;align-items:center;gap:4px}
 
-        .results-scroll{flex:1;overflow-y:auto;padding:24px 28px}
-        .results-scroll::-webkit-scrollbar{width:5px}
-        .results-scroll::-webkit-scrollbar-thumb{background:#1e1e2e;border-radius:5px}
+        .results-scroll{flex:1;overflow-y:auto;padding:20px 24px}
+        .results-scroll::-webkit-scrollbar{width:4px}
+        .results-scroll::-webkit-scrollbar-thumb{background:#0f3460}
 
-        .empty-state{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
-        .empty-state .empty-icon{width:56px;height:56px;border-radius:14px;background:#111118;border:1px solid #1e1e2e;display:flex;align-items:center;justify-content:center}
-        .empty-state p{color:#333;font-size:.85rem;text-align:center;line-height:1.6}
+        .empty-state{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+        .empty-state .empty-icon{width:48px;height:48px;border:2px solid #0f3460;display:flex;align-items:center;justify-content:center}
+        .empty-state p{color:#3a3a4e;font-size:.75rem;text-align:center;line-height:1.7}
 
-        .results-grid{display:flex;flex-direction:column;gap:14px}
+        .results-grid{display:flex;flex-direction:column;gap:12px}
 
         /* Scan warning */
-        .scan-warning{padding:12px 16px;background:#f59e0b10;border:1px solid #f59e0b30;border-radius:10px;margin-bottom:14px;display:flex;align-items:center;gap:12px}
-        .scan-warning-text{flex:1;font-size:.8rem;color:#fbbf24;line-height:1.5}
+        .scan-warning{padding:10px 14px;background:#fbbf2408;border:2px solid #fbbf24;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+        .scan-warning-text{flex:1;font-size:.7rem;color:#fbbf24;line-height:1.5}
         .scan-warning-text strong{color:#fde68a}
-        .scan-warning button{padding:5px 12px;border-radius:6px;border:1px solid #f59e0b40;background:#f59e0b15;color:#fbbf24;font-size:.7rem;font-family:inherit;cursor:pointer;white-space:nowrap}
+        .scan-warning button{padding:4px 10px;border:1px solid #fbbf24;background:transparent;color:#fbbf24;font-size:.6rem;font-family:'IBM Plex Mono',monospace;cursor:pointer;white-space:nowrap}
 
         /* Metadata panel */
-        .metadata-panel{padding:14px 16px;background:#111118;border:1px solid #1e1e2e;border-radius:10px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:16px}
+        .metadata-panel{padding:10px 14px;background:#16213e;border:2px solid #0f3460;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:14px}
         .meta-item{display:flex;flex-direction:column;gap:2px}
-        .meta-label{font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:#444;font-weight:600}
-        .meta-value{font-size:.8rem;font-family:'JetBrains Mono',monospace;color:#999}
+        .meta-label{font-family:'Press Start 2P',monospace;font-size:.35rem;color:#53565a}
+        .meta-value{font-size:.7rem;color:#c8c8d4}
 
-        /* Similarity matrix */
-        .similarity-panel{padding:14px 16px;background:#111118;border:1px solid #1e1e2e;border-radius:10px;margin-bottom:14px}
-        .similarity-title{font-size:.7rem;font-weight:600;color:#555;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em}
-        .similarity-grid{display:flex;flex-wrap:wrap;gap:6px}
-        .sim-badge{padding:4px 10px;border-radius:6px;font-size:.72rem;font-family:'JetBrains Mono',monospace;border:1px solid #1e1e2e}
-        .sim-badge.high{background:#22c55e10;border-color:#22c55e30;color:#4ade80}
-        .sim-badge.med{background:#f59e0b10;border-color:#f59e0b30;color:#fbbf24}
-        .sim-badge.low{background:#ef444410;border-color:#ef444430;color:#f87171}
+        /* Similarity */
+        .similarity-panel{padding:10px 14px;background:#16213e;border:2px solid #0f3460;margin-bottom:12px}
+        .similarity-title{font-family:'Press Start 2P',monospace;font-size:.35rem;color:#53565a;margin-bottom:8px}
+        .similarity-grid{display:flex;flex-wrap:wrap;gap:4px}
+        .sim-badge{padding:3px 8px;font-size:.65rem;border:1px solid}
+        .sim-badge.high{border-color:#4ade80;color:#4ade80}
+        .sim-badge.med{border-color:#fbbf24;color:#fbbf24}
+        .sim-badge.low{border-color:#e94560;color:#e94560}
 
         /* Result cards */
-        .result-card{background:#111118;border:1px solid #1e1e2e;border-radius:10px;overflow:hidden;transition:border-color .15s}
-        .result-card:hover{border-color:#2a2a3a}
-        .card-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #1e1e2e}
+        .result-card{background:#16213e;border:2px solid #0f3460;overflow:hidden}
+        .result-card:hover{border-color:#e94560}
+        .card-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:2px solid #0f3460}
         .card-header-left{display:flex;align-items:center;gap:8px}
-        .card-title{font-size:.85rem;font-weight:600}
-        .card-badge{font-size:.67rem;font-weight:500;padding:2px 8px;border-radius:5px;font-family:'JetBrains Mono',monospace}
-        .card-badge.time{background:#7c5cfc15;color:#a78bfa}
-        .card-badge.error{background:#ef444415;color:#f87171}
-        .card-stats{display:flex;gap:14px;font-size:.7rem;color:#555;font-family:'JetBrains Mono',monospace}
+        .card-title{font-size:.75rem}
+        .card-badge{font-size:.6rem;padding:2px 6px;border:1px solid}
+        .card-badge.time{border-color:#0f3460;color:#e94560}
+        .card-badge.error{border-color:#e94560;color:#e94560}
+        .card-stats{display:flex;gap:12px;font-size:.6rem;color:#53565a}
         .card-body{position:relative}
-        .card-body pre{padding:14px 16px;margin:0;font-family:'JetBrains Mono',monospace;font-size:.75rem;line-height:1.7;white-space:pre-wrap;word-break:break-word;color:#999;max-height:380px;overflow-y:auto}
+        .card-body pre{padding:12px 14px;margin:0;font-family:'IBM Plex Mono',monospace;font-size:.7rem;line-height:1.7;white-space:pre-wrap;word-break:break-word;color:#8888a0;max-height:360px;overflow-y:auto}
         .card-body pre::-webkit-scrollbar{width:3px}
-        .card-body pre::-webkit-scrollbar-thumb{background:#1e1e2e;border-radius:3px}
-        .card-body pre.error-text{color:#f87171}
-        .copy-btn{position:absolute;top:8px;right:8px;background:#1a1a26;border:1px solid #2a2a3a;color:#666;padding:3px 9px;border-radius:5px;font-size:.66rem;font-family:inherit;cursor:pointer;transition:all .12s;opacity:0}
+        .card-body pre::-webkit-scrollbar-thumb{background:#0f3460}
+        .card-body pre.error-text{color:#e94560}
+        .copy-btn{position:absolute;top:6px;right:6px;background:#1a1a2e;border:1px solid #0f3460;color:#53565a;padding:2px 8px;font-size:.6rem;font-family:'IBM Plex Mono',monospace;cursor:pointer;opacity:0}
         .card-body:hover .copy-btn{opacity:1}
-        .copy-btn:hover{background:#2a2a3a;color:#e4e4ed}
+        .copy-btn:hover{border-color:#e94560;color:#e94560}
 
         /* Table results */
-        .table-wrap{padding:14px 16px;overflow-x:auto}
-        .table-wrap table{width:100%;border-collapse:collapse;font-size:.75rem;font-family:'JetBrains Mono',monospace}
-        .table-wrap th,.table-wrap td{padding:6px 10px;border:1px solid #1e1e2e;text-align:left;color:#999}
-        .table-wrap th{background:#1a1a26;color:#c4b5fd;font-weight:500}
-        .table-dl{padding:8px 16px 14px;display:flex;gap:6px}
+        .table-wrap{padding:12px 14px;overflow-x:auto}
+        .table-wrap table{width:100%;border-collapse:collapse;font-size:.65rem}
+        .table-wrap th,.table-wrap td{padding:4px 8px;border:1px solid #0f3460;text-align:left;color:#8888a0}
+        .table-wrap th{background:#1a1a2e;color:#e94560;font-weight:500}
+        .table-dl{padding:6px 14px 10px;display:flex;gap:4px}
 
         /* Diff view */
-        .diff-overlay{display:none;position:fixed;inset:0;z-index:200;background:#0a0a0fee;backdrop-filter:blur(4px)}
+        .diff-overlay{display:none;position:fixed;inset:0;z-index:200;background:#1a1a2ef8}
         .diff-overlay.active{display:flex;flex-direction:column}
-        .diff-header{padding:16px 28px;border-bottom:1px solid #1e1e2e;display:flex;align-items:center;justify-content:space-between;background:#111118}
-        .diff-header h2{font-size:.95rem;font-weight:600}
-        .diff-close{background:none;border:none;color:#666;font-size:1.2rem;cursor:pointer;padding:4px 8px}
-        .diff-close:hover{color:#e4e4ed}
-        .diff-body{flex:1;overflow-y:auto;padding:20px 28px}
-        .diff-stats{display:flex;gap:12px;margin-bottom:16px;font-size:.78rem;font-family:'JetBrains Mono',monospace}
+        .diff-header{padding:14px 24px;border-bottom:2px solid #0f3460;display:flex;align-items:center;justify-content:space-between;background:#16213e}
+        .diff-header h2{font-family:'Press Start 2P',monospace;font-size:.5rem;color:#e94560}
+        .diff-close{background:none;border:none;color:#53565a;font-size:1.2rem;cursor:pointer;padding:2px 6px;font-family:'IBM Plex Mono',monospace}
+        .diff-close:hover{color:#e94560}
+        .diff-body{flex:1;overflow-y:auto;padding:16px 24px}
+        .diff-stats{display:flex;gap:12px;margin-bottom:14px;font-size:.7rem}
         .diff-stats .add{color:#4ade80}
-        .diff-stats .del{color:#f87171}
-        .diff-stats .sim{color:#a78bfa}
-        .diff-pre{font-family:'JetBrains Mono',monospace;font-size:.75rem;line-height:1.8;white-space:pre-wrap;word-break:break-word}
-        .diff-pre .line-add{color:#4ade80;background:#22c55e08}
-        .diff-pre .line-del{color:#f87171;background:#ef444408}
-        .diff-pre .line-info{color:#7c5cfc;opacity:.6}
+        .diff-stats .del{color:#e94560}
+        .diff-stats .sim{color:#fbbf24}
+        .diff-pre{font-size:.7rem;line-height:1.8;white-space:pre-wrap;word-break:break-word}
+        .diff-pre .line-add{color:#4ade80;background:#4ade8008}
+        .diff-pre .line-del{color:#e94560;background:#e9456008}
+        .diff-pre .line-info{color:#0f3460}
 
-        /* Batch file group */
-        .batch-group{margin-bottom:20px}
-        .batch-header{padding:10px 14px;background:#1a1a26;border:1px solid #1e1e2e;border-radius:8px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between}
-        .batch-header h3{font-size:.85rem;font-weight:600}
-        .batch-header span{font-size:.7rem;color:#555}
+        /* Batch */
+        .batch-group{margin-bottom:16px}
+        .batch-header{padding:8px 12px;background:#1a1a2e;border:2px solid #0f3460;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+        .batch-header h3{font-size:.75rem}
+        .batch-header span{font-size:.6rem;color:#53565a}
 
         /* Shared banner */
-        .shared-banner{padding:10px 16px;background:#7c5cfc10;border-bottom:1px solid #7c5cfc30;text-align:center;font-size:.8rem;color:#c4b5fd}
+        .shared-banner{padding:8px 14px;background:#e9456010;border-bottom:2px solid #e94560;text-align:center;font-size:.7rem;color:#e94560}
 
         /* Spinner */
-        .spinner-overlay{display:none;position:fixed;inset:0;z-index:100;background:#0a0a0fcc;backdrop-filter:blur(4px);align-items:center;justify-content:center}
+        .spinner-overlay{display:none;position:fixed;inset:0;z-index:100;background:#1a1a2eee;align-items:center;justify-content:center}
         .spinner-overlay.active{display:flex}
         .spinner-box{text-align:center}
-        .spinner-ring{width:36px;height:36px;margin:0 auto 14px;border:3px solid #1e1e2e;border-top-color:#7c5cfc;border-radius:50%;animation:spin .8s linear infinite}
-        .spinner-box p{color:#666;font-size:.82rem}
-        @keyframes spin{to{transform:rotate(360deg)}}
+        .spinner-dots{font-family:'Press Start 2P',monospace;font-size:.6rem;color:#e94560;animation:blink 1s step-end infinite}
+        .spinner-box p{color:#53565a;font-size:.7rem;margin-top:10px}
+        @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 
         /* History drawer */
-        .history-drawer{position:fixed;right:0;top:0;bottom:0;width:360px;background:#111118;border-left:1px solid #1e1e2e;z-index:150;transform:translateX(100%);transition:transform .25s;display:flex;flex-direction:column}
+        .history-drawer{position:fixed;right:0;top:0;bottom:0;width:340px;background:#16213e;border-left:2px solid #0f3460;z-index:150;transform:translateX(100%);transition:transform .2s;display:flex;flex-direction:column}
         .history-drawer.open{transform:translateX(0)}
-        .history-header{padding:16px 20px;border-bottom:1px solid #1e1e2e;display:flex;align-items:center;justify-content:space-between}
-        .history-header h2{font-size:.95rem;font-weight:600}
-        .history-list{flex:1;overflow-y:auto;padding:12px}
-        .history-item{padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:4px;transition:background .12s}
-        .history-item:hover{background:#1a1a26}
-        .history-item .h-name{font-size:.8rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .history-item .h-meta{font-size:.68rem;color:#555;margin-top:2px}
+        .history-header{padding:14px 18px;border-bottom:2px solid #0f3460;display:flex;align-items:center;justify-content:space-between}
+        .history-header h2{font-family:'Press Start 2P',monospace;font-size:.5rem;color:#e94560}
+        .history-list{flex:1;overflow-y:auto;padding:10px}
+        .history-item{padding:8px 10px;cursor:pointer;margin-bottom:2px;border:1px solid transparent;transition:all .1s}
+        .history-item:hover{background:#0f346020;border-color:#0f3460}
+        .history-item .h-name{font-size:.7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .history-item .h-meta{font-size:.58rem;color:#53565a;margin-top:2px}
     </style>
 </head>
 <body>
     <div class="app">
         <div class="sidebar">
             <div class="logo">
-                <h1><span class="accent">PDF</span> Extraction Playground</h1>
-                <p>Compare extraction across Python libraries</p>
+                <h1>PDF EXTRACTION<br>PLAYGROUND</h1>
+                <p>> compare extraction across libraries_</p>
             </div>
             <div class="sidebar-content">
                 <!-- Upload -->
                 <div>
-                    <div class="label">Upload</div>
+                    <div class="label">// upload</div>
                     <div class="drop-zone" id="dropZone">
                         <div class="upload-icon">
-                            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z"/></svg>
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z"/></svg>
                         </div>
-                        <p>Drop PDF(s) or <span>browse</span></p>
+                        <p>drop PDF(s) or <span>[browse]</span></p>
                         <input type="file" id="fileInput" accept=".pdf" multiple>
                         <div class="file-info" id="fileInfo">
-                            <div class="file-icon"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="#c4b5fd" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg></div>
+                            <div class="file-icon"><svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="#e94560" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg></div>
                             <div class="file-meta">
                                 <div class="file-name" id="fileName"></div>
                                 <div class="file-size" id="fileSize"></div>
@@ -235,20 +234,20 @@
 
                 <!-- Mode -->
                 <div>
-                    <div class="label">Mode</div>
+                    <div class="label">// mode</div>
                     <div class="mode-toggle">
-                        <button class="mode-btn active" data-mode="text" onclick="setMode('text')">Text</button>
-                        <button class="mode-btn" data-mode="table" onclick="setMode('table')">Tables</button>
+                        <button class="mode-btn active" data-mode="text" onclick="setMode('text')">TEXT</button>
+                        <button class="mode-btn" data-mode="table" onclick="setMode('table')">TABLES</button>
                     </div>
                 </div>
 
                 <!-- Pages & Language -->
                 <div>
-                    <div class="label">Options</div>
+                    <div class="label">// options</div>
                     <div class="input-row" style="margin-bottom:8px">
-                        <input class="input-field" id="pagesInput" placeholder="Pages: all (e.g. 1,3,5-8)">
+                        <input class="input-field" id="pagesInput" placeholder="pages: all (eg 1,3,5-8)">
                     </div>
-                    <div class="label" style="margin-top:4px">OCR Languages</div>
+                    <div class="label" style="margin-top:6px">// ocr lang</div>
                     <div class="lang-grid" id="langGrid">
                         {% for code, info in languages.items() %}
                         <label class="lang-chip {{ 'selected' if code in ['deu','eng'] else '' }}">
@@ -261,16 +260,16 @@
 
                 <!-- Text libraries -->
                 <div id="textLibSection">
-                    <div class="label">Text Extraction</div>
+                    <div class="label">// text extraction</div>
                     <div class="quick-actions">
-                        <button onclick="toggleGroup('text',true)">All</button>
-                        <button onclick="toggleGroup('text',false)">None</button>
+                        <button onclick="toggleGroup('text',true)">[all]</button>
+                        <button onclick="toggleGroup('text',false)">[none]</button>
                     </div>
                     <div class="lib-group">
                         {% for name, info in libraries.items() if info.category == 'text' %}
                         <label class="lib-item selected" data-lib="{{ name }}" data-cat="text">
                             <input type="checkbox" name="lib" value="{{ name }}" checked>
-                            <div class="lib-checkbox"><svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <div class="lib-checkbox"><svg width="6" height="6" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#1a1a2e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
                             <div class="lib-details"><div class="name">{{ name }}</div><div class="desc">{{ info.description }}</div></div>
                         </label>
                         {% endfor %}
@@ -279,16 +278,16 @@
 
                 <!-- OCR libraries -->
                 <div id="ocrLibSection">
-                    <div class="label">OCR (Scanned / Handwritten)</div>
+                    <div class="label">// ocr engines</div>
                     <div class="quick-actions">
-                        <button onclick="toggleGroup('ocr',true)">All</button>
-                        <button onclick="toggleGroup('ocr',false)">None</button>
+                        <button onclick="toggleGroup('ocr',true)">[all]</button>
+                        <button onclick="toggleGroup('ocr',false)">[none]</button>
                     </div>
                     <div class="lib-group">
                         {% for name, info in libraries.items() if info.category == 'ocr' %}
                         <label class="lib-item" data-lib="{{ name }}" data-cat="ocr">
                             <input type="checkbox" name="lib" value="{{ name }}">
-                            <div class="lib-checkbox"><svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <div class="lib-checkbox"><svg width="6" height="6" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#1a1a2e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
                             <div class="lib-details"><div class="name">{{ name }}</div><div class="desc">{{ info.description }}</div></div>
                             <span class="lib-cat ocr">OCR</span>
                         </label>
@@ -298,12 +297,12 @@
 
                 <!-- Cloud libraries -->
                 <div id="cloudLibSection">
-                    <div class="label">Cloud Services</div>
+                    <div class="label">// cloud</div>
                     <div class="lib-group">
                         {% for name, info in libraries.items() if info.category == 'cloud' %}
                         <label class="lib-item" data-lib="{{ name }}" data-cat="cloud">
                             <input type="checkbox" name="lib" value="{{ name }}">
-                            <div class="lib-checkbox"><svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <div class="lib-checkbox"><svg width="6" height="6" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#1a1a2e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
                             <div class="lib-details"><div class="name">{{ name }}</div><div class="desc">{{ info.description }}</div></div>
                             <span class="lib-cat cloud">CLOUD</span>
                         </label>
@@ -312,35 +311,35 @@
                 </div>
             </div>
             <div class="sidebar-footer">
-                <button class="btn-extract" id="extractBtn" disabled>Extract & Compare</button>
+                <button class="btn-extract" id="extractBtn" disabled>[ EXTRACT ]</button>
             </div>
         </div>
 
         <div class="results-area">
             {% if shared_data %}
-            <div class="shared-banner">Shared extraction result (read-only)</div>
+            <div class="shared-banner">> shared extraction result (read-only)</div>
             {% endif %}
 
             <div class="results-toolbar" id="toolbar">
                 <div class="toolbar-left">
-                    <button class="btn-sm" id="diffBtn" onclick="openDiffPicker()">Diff</button>
-                    <select class="input-field" id="diffA" style="max-width:130px;display:none"></select>
-                    <span id="diffVs" style="display:none;font-size:.72rem;color:#555">vs</span>
-                    <select class="input-field" id="diffB" style="max-width:130px;display:none"></select>
-                    <button class="btn-sm" id="diffGoBtn" style="display:none" onclick="runDiff()">Compare</button>
+                    <button class="btn-sm" id="diffBtn" onclick="openDiffPicker()">[diff]</button>
+                    <select class="input-field" id="diffA" style="max-width:120px;display:none"></select>
+                    <span id="diffVs" style="display:none;font-size:.65rem;color:#53565a">vs</span>
+                    <select class="input-field" id="diffB" style="max-width:120px;display:none"></select>
+                    <button class="btn-sm" id="diffGoBtn" style="display:none" onclick="runDiff()">[go]</button>
                 </div>
                 <div class="toolbar-right">
-                    <button class="btn-sm" id="historyBtn" onclick="toggleHistory()">History</button>
-                    <button class="btn-sm" onclick="exportResult('json')">Export JSON</button>
-                    <button class="btn-sm" onclick="exportResult('txt')">Export TXT</button>
-                    <button class="btn-sm" id="shareBtn" onclick="shareResult()">Share</button>
+                    <button class="btn-sm" id="historyBtn" onclick="toggleHistory()">[history]</button>
+                    <button class="btn-sm" onclick="exportResult('json')">[.json]</button>
+                    <button class="btn-sm" onclick="exportResult('txt')">[.txt]</button>
+                    <button class="btn-sm" id="shareBtn" onclick="shareResult()">[share]</button>
                 </div>
             </div>
 
             <div class="results-scroll" id="resultsScroll">
                 <div class="empty-state" id="emptyState">
-                    <div class="empty-icon"><svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="#333" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m5.231 13.481L15 17.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v16.5c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Zm3.75 11.625a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg></div>
-                    <p>Upload a PDF and select libraries<br>to compare extraction results</p>
+                    <div class="empty-icon"><svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#0f3460" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m5.231 13.481L15 17.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v16.5c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Zm3.75 11.625a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg></div>
+                    <p>> upload a PDF and select libraries<br>> to compare extraction results_</p>
                 </div>
                 <div class="results-grid" id="results"></div>
             </div>
@@ -350,8 +349,8 @@
     <!-- Diff overlay -->
     <div class="diff-overlay" id="diffOverlay">
         <div class="diff-header">
-            <h2 id="diffTitle">Diff</h2>
-            <button class="diff-close" onclick="closeDiff()">&times;</button>
+            <h2 id="diffTitle">> DIFF</h2>
+            <button class="diff-close" onclick="closeDiff()">[x]</button>
         </div>
         <div class="diff-body">
             <div class="diff-stats" id="diffStats"></div>
@@ -362,8 +361,8 @@
     <!-- History drawer -->
     <div class="history-drawer" id="historyDrawer">
         <div class="history-header">
-            <h2>History</h2>
-            <button class="diff-close" onclick="toggleHistory()">&times;</button>
+            <h2>> HISTORY</h2>
+            <button class="diff-close" onclick="toggleHistory()">[x]</button>
         </div>
         <div class="history-list" id="historyList"></div>
     </div>
@@ -371,8 +370,8 @@
     <!-- Spinner -->
     <div class="spinner-overlay" id="spinner">
         <div class="spinner-box">
-            <div class="spinner-ring"></div>
-            <p id="spinnerText">Extracting...</p>
+            <div class="spinner-dots">. . . . .</div>
+            <p id="spinnerText">> extracting...</p>
         </div>
     </div>
 
@@ -383,7 +382,6 @@
         let currentData=null;
         let resultTexts={};
 
-        // --- Shared data ---
         {% if shared_data %}
         (function(){
             const data = {{ shared_data|safe }};
@@ -397,7 +395,6 @@
         })();
         {% endif %}
 
-        // --- File handling ---
         const dz=$('dropZone'), fi=$('fileInput');
         dz.addEventListener('click',()=>fi.click());
         dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover')});
@@ -408,318 +405,183 @@
         function setFiles(fileList){
             selectedFiles=[...fileList].filter(f=>f.name.toLowerCase().endsWith('.pdf'));
             if(!selectedFiles.length)return;
-            const info=$('fileInfo');
-            info.classList.add('visible');
+            $('fileInfo').classList.add('visible');
             if(selectedFiles.length===1){
                 $('fileName').textContent=selectedFiles[0].name;
                 $('fileSize').textContent=fmtBytes(selectedFiles[0].size);
                 $('fileCount').textContent='';
             }else{
-                $('fileName').textContent=selectedFiles.length+' files selected';
-                const total=selectedFiles.reduce((s,f)=>s+f.size,0);
-                $('fileSize').textContent=fmtBytes(total)+' total';
+                $('fileName').textContent=selectedFiles.length+' files';
+                $('fileSize').textContent=fmtBytes(selectedFiles.reduce((s,f)=>s+f.size,0));
                 $('fileCount').textContent=selectedFiles.map(f=>f.name).join(', ');
             }
             updateBtn();
         }
 
-        // --- Mode ---
         function setMode(m){
             currentMode=m;
             document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
-            const allLibs=document.querySelectorAll('.lib-item');
-            if(m==='table'){
-                allLibs.forEach(el=>el.classList.add('disabled'));
-            }else{
-                allLibs.forEach(el=>el.classList.remove('disabled'));
-            }
+            document.querySelectorAll('.lib-item').forEach(el=>m==='table'?el.classList.add('disabled'):el.classList.remove('disabled'));
             updateBtn();
         }
 
-        // --- Libraries ---
         document.querySelectorAll('.lib-item').forEach(el=>{
             el.addEventListener('click',()=>{
                 if(el.classList.contains('disabled'))return;
-                const cb=el.querySelector('input');
-                cb.checked=!cb.checked;
-                el.classList.toggle('selected',cb.checked);
-                updateBtn();
+                const cb=el.querySelector('input');cb.checked=!cb.checked;
+                el.classList.toggle('selected',cb.checked);updateBtn();
             });
         });
         function toggleGroup(cat,checked){
             document.querySelectorAll(`.lib-item[data-cat="${cat}"]`).forEach(el=>{
                 if(el.classList.contains('disabled'))return;
-                el.querySelector('input').checked=checked;
-                el.classList.toggle('selected',checked);
-            });
-            updateBtn();
+                el.querySelector('input').checked=checked;el.classList.toggle('selected',checked);
+            });updateBtn();
         }
         function getSelectedLibs(){return[...document.querySelectorAll('.lib-item:not(.disabled) input:checked')].map(cb=>cb.value)}
 
-        // --- Languages ---
         document.querySelectorAll('.lang-chip').forEach(el=>{
-            el.addEventListener('click',()=>{
-                const cb=el.querySelector('input');
-                cb.checked=!cb.checked;
-                el.classList.toggle('selected',cb.checked);
-            });
+            el.addEventListener('click',()=>{const cb=el.querySelector('input');cb.checked=!cb.checked;el.classList.toggle('selected',cb.checked)});
         });
-        function getSelectedLangs(){
-            return[...document.querySelectorAll('.lang-chip input:checked')].map(cb=>cb.value).join('+');
-        }
+        function getSelectedLangs(){return[...document.querySelectorAll('.lang-chip input:checked')].map(cb=>cb.value).join('+')}
 
         function updateBtn(){
-            const hasFile=selectedFiles.length>0;
-            const hasLib=currentMode==='table'||getSelectedLibs().length>0;
-            $('extractBtn').disabled=!hasFile||!hasLib;
+            $('extractBtn').disabled=!selectedFiles.length||(currentMode!=='table'&&!getSelectedLibs().length);
         }
 
-        // --- Extract ---
         $('extractBtn').addEventListener('click',async()=>{
             if(!selectedFiles.length)return;
-            $('spinnerText').textContent=selectedFiles.length>1?`Extracting ${selectedFiles.length} files...`:'Extracting...';
+            $('spinnerText').textContent=selectedFiles.length>1?`> extracting ${selectedFiles.length} files...`:'> extracting...';
             $('spinner').classList.add('active');
-            $('results').innerHTML='';
-            $('emptyState').style.display='none';
-
-            const pages=$('pagesInput').value;
-            const lang=getSelectedLangs();
-            const libs=getSelectedLibs();
-
+            $('results').innerHTML='';$('emptyState').style.display='none';
+            const pages=$('pagesInput').value,lang=getSelectedLangs(),libs=getSelectedLibs();
             try{
                 let data;
                 if(selectedFiles.length===1){
-                    const fd=new FormData();
-                    fd.append('file',selectedFiles[0]);
-                    libs.forEach(l=>fd.append('libraries',l));
-                    fd.append('mode',currentMode);
-                    if(pages)fd.append('pages',pages);
-                    if(lang)fd.append('lang',lang);
-                    const resp=await fetch('/extract',{method:'POST',body:fd});
-                    data=await resp.json();
-                    if(data.error){showError(data.error);$('spinner').classList.remove('active');return;}
-                    currentData=data;
-                    resultTexts={};
-                    for(const[k,v]of Object.entries(data.results||{})){if(v.text)resultTexts[k]=v.text;}
+                    const fd=new FormData();fd.append('file',selectedFiles[0]);
+                    libs.forEach(l=>fd.append('libraries',l));fd.append('mode',currentMode);
+                    if(pages)fd.append('pages',pages);if(lang)fd.append('lang',lang);
+                    const resp=await fetch('/extract',{method:'POST',body:fd});data=await resp.json();
+                    if(data.error){showError(data.error);$('spinner').classList.remove('active');return}
+                    currentData=data;resultTexts={};
+                    for(const[k,v]of Object.entries(data.results||{})){if(v.text)resultTexts[k]=v.text}
                     renderAll(data);
                 }else{
-                    const fd=new FormData();
-                    selectedFiles.forEach(f=>fd.append('files',f));
-                    libs.forEach(l=>fd.append('libraries',l));
-                    fd.append('mode',currentMode);
-                    if(pages)fd.append('pages',pages);
-                    if(lang)fd.append('lang',lang);
-                    const resp=await fetch('/batch-extract',{method:'POST',body:fd});
-                    data=await resp.json();
-                    if(data.error){showError(data.error);$('spinner').classList.remove('active');return;}
-                    currentData=data;
-                    renderBatch(data);
+                    const fd=new FormData();selectedFiles.forEach(f=>fd.append('files',f));
+                    libs.forEach(l=>fd.append('libraries',l));fd.append('mode',currentMode);
+                    if(pages)fd.append('pages',pages);if(lang)fd.append('lang',lang);
+                    const resp=await fetch('/batch-extract',{method:'POST',body:fd});data=await resp.json();
+                    if(data.error){showError(data.error);$('spinner').classList.remove('active');return}
+                    currentData=data;renderBatch(data);
                 }
             }catch(err){showError(err.message)}
             $('spinner').classList.remove('active');
         });
 
-        // --- Render ---
         function renderAll(data){
-            const r=$('results');
-            r.innerHTML='';
-            $('toolbar').classList.add('visible');
-
-            // Scan warning
+            const r=$('results');r.innerHTML='';$('toolbar').classList.add('visible');
             if(data.scan_detection&&data.scan_detection.is_scanned){
                 const w=document.createElement('div');w.className='scan-warning';
-                w.innerHTML=`<div class="scan-warning-text"><strong>Scanned PDF detected</strong> &mdash; ${data.scan_detection.scanned_pages.length} of ${data.metadata?.page_count||'?'} pages appear image-based (${data.scan_detection.confidence} confidence). OCR extractors recommended.</div><button onclick="toggleGroup('ocr',true)">Enable OCR</button>`;
+                w.innerHTML=`<div class="scan-warning-text"><strong>! scanned PDF</strong> - ${data.scan_detection.scanned_pages.length}/${data.metadata?.page_count||'?'} pages are images (${data.scan_detection.confidence}). use OCR.</div><button onclick="toggleGroup('ocr',true)">[enable OCR]</button>`;
                 r.appendChild(w);
             }
-
-            // Metadata
             if(data.metadata){
-                const m=data.metadata;
-                const panel=document.createElement('div');panel.className='metadata-panel';
-                const items=[
-                    ['Pages',m.page_count],
-                    ['Size',fmtBytes(m.file_size)],
-                    ['Author',m.author||'—'],
-                    ['Creator',m.creator||'—'],
-                    ['Created',m.creation_date?m.creation_date.replace(/^D:/,'').slice(0,8):'—'],
-                    ['Encrypted',m.encrypted?'Yes':'No'],
-                    ['Images',m.has_images?'Yes':'No'],
-                ];
-                panel.innerHTML=items.map(([l,v])=>`<div class="meta-item"><div class="meta-label">${l}</div><div class="meta-value">${esc(String(v))}</div></div>`).join('');
+                const m=data.metadata,panel=document.createElement('div');panel.className='metadata-panel';
+                panel.innerHTML=[['PG',m.page_count],['SIZE',fmtBytes(m.file_size)],['AUTHOR',m.author||'-'],['CREATOR',m.creator||'-'],['DATE',m.creation_date?m.creation_date.replace(/^D:/,'').slice(0,8):'-'],['ENC',m.encrypted?'Y':'N'],['IMG',m.has_images?'Y':'N']].map(([l,v])=>`<div class="meta-item"><div class="meta-label">${l}</div><div class="meta-value">${esc(String(v))}</div></div>`).join('');
                 r.appendChild(panel);
             }
-
-            // Similarity
             if(data.similarity&&Object.keys(data.similarity).length>0){
                 const s=document.createElement('div');s.className='similarity-panel';
-                let html='<div class="similarity-title">Similarity</div><div class="similarity-grid">';
-                for(const[k,v]of Object.entries(data.similarity)){
-                    const cls=v>=90?'high':v>=70?'med':'low';
-                    html+=`<div class="sim-badge ${cls}">${esc(k)}: ${v}%</div>`;
-                }
-                html+='</div>';s.innerHTML=html;r.appendChild(s);
+                let h='<div class="similarity-title">SIMILARITY</div><div class="similarity-grid">';
+                for(const[k,v]of Object.entries(data.similarity)){h+=`<div class="sim-badge ${v>=90?'high':v>=70?'med':'low'}">${esc(k)}: ${v}%</div>`}
+                h+='</div>';s.innerHTML=h;r.appendChild(s);
             }
-
-            // Results
-            if(currentMode==='table'){
-                renderTableResults(data.results,r);
-            }else{
-                renderTextResults(data.results,r);
-            }
-
-            // Populate diff selectors
+            currentMode==='table'?renderTableResults(data.results,r):renderTextResults(data.results,r);
             populateDiffSelectors();
         }
 
         function renderTextResults(results,container){
             for(const[lib,res]of Object.entries(results)){
                 const card=document.createElement('div');card.className='result-card';
-                if(res.error){
-                    card.innerHTML=`<div class="card-header"><div class="card-header-left"><span class="card-title">${esc(lib)}</span><span class="card-badge error">error</span></div></div><div class="card-body"><pre class="error-text">${esc(res.error)}</pre></div>`;
-                }else{
-                    const c=res.text.length,w=res.text.trim().split(/\s+/).filter(Boolean).length,l=res.text.split('\n').length;
-                    card.innerHTML=`<div class="card-header"><div class="card-header-left"><span class="card-title">${esc(lib)}</span><span class="card-badge time">${fmtTime(res.time_ms)}</span></div><div class="card-stats"><span>${c.toLocaleString()} chars</span><span>${w.toLocaleString()} words</span><span>${l.toLocaleString()} lines</span></div></div><div class="card-body"><button class="copy-btn" onclick="copyText(this)">Copy</button><pre>${esc(res.text)}</pre></div>`;
-                }
+                if(res.error){card.innerHTML=`<div class="card-header"><div class="card-header-left"><span class="card-title">${esc(lib)}</span><span class="card-badge error">ERR</span></div></div><div class="card-body"><pre class="error-text">${esc(res.error)}</pre></div>`}
+                else{const c=res.text.length,w=res.text.trim().split(/\s+/).filter(Boolean).length,l=res.text.split('\n').length;
+                card.innerHTML=`<div class="card-header"><div class="card-header-left"><span class="card-title">${esc(lib)}</span><span class="card-badge time">${fmtTime(res.time_ms)}</span></div><div class="card-stats"><span>${c.toLocaleString()}c</span><span>${w.toLocaleString()}w</span><span>${l.toLocaleString()}L</span></div></div><div class="card-body"><button class="copy-btn" onclick="copyText(this)">[copy]</button><pre>${esc(res.text)}</pre></div>`}
                 container.appendChild(card);
             }
         }
 
         function renderTableResults(results,container){
-            const tablesResult=results['pdfplumber-tables'];
-            if(!tablesResult||!tablesResult.tables){
-                container.innerHTML+='<div class="result-card"><div class="card-header"><span class="card-title">No tables found</span></div></div>';
-                return;
-            }
-            for(const t of tablesResult.tables){
+            const tr=results['pdfplumber-tables'];
+            if(!tr||!tr.tables){container.innerHTML+='<div class="result-card"><div class="card-header"><span class="card-title">no tables found</span></div></div>';return}
+            for(const t of tr.tables){
                 const card=document.createElement('div');card.className='result-card';
-                let tableHtml='<table>';
-                if(t.data&&t.data.length>0){
-                    tableHtml+='<tr>'+t.data[0].map(h=>`<th>${esc(h||'')}</th>`).join('')+'</tr>';
-                    for(let i=1;i<t.data.length;i++){
-                        tableHtml+='<tr>'+t.data[i].map(c=>`<td>${esc(c||'')}</td>`).join('')+'</tr>';
-                    }
-                }
-                tableHtml+='</table>';
-                card.innerHTML=`<div class="card-header"><div class="card-header-left"><span class="card-title">Page ${t.page}, Table ${t.table_index}</span><span class="card-badge time">${t.rows} rows × ${t.cols} cols</span></div></div><div class="table-wrap">${tableHtml}</div><div class="table-dl"><button class="btn-sm" onclick="downloadCSV(this,'page${t.page}_table${t.table_index}.csv')">Download CSV</button></div>`;
-                card.querySelector('.btn-sm').dataset.csv=t.csv;
-                container.appendChild(card);
+                let th='<table>';
+                if(t.data&&t.data.length>0){th+='<tr>'+t.data[0].map(h=>`<th>${esc(h||'')}</th>`).join('')+'</tr>';for(let i=1;i<t.data.length;i++){th+='<tr>'+t.data[i].map(c=>`<td>${esc(c||'')}</td>`).join('')+'</tr>'}}
+                th+='</table>';
+                card.innerHTML=`<div class="card-header"><div class="card-header-left"><span class="card-title">pg${t.page} tbl${t.table_index}</span><span class="card-badge time">${t.rows}r x ${t.cols}c</span></div></div><div class="table-wrap">${th}</div><div class="table-dl"><button class="btn-sm" onclick="downloadCSV(this,'p${t.page}_t${t.table_index}.csv')">[csv]</button></div>`;
+                card.querySelector('.btn-sm').dataset.csv=t.csv;container.appendChild(card);
             }
         }
 
         function renderBatch(data){
-            const r=$('results');r.innerHTML='';
-            $('toolbar').classList.add('visible');
-
-            // Summary
-            const s=data.summary;
-            const summary=document.createElement('div');summary.className='metadata-panel';
-            summary.innerHTML=`<div class="meta-item"><div class="meta-label">Files</div><div class="meta-value">${s.total_files}</div></div><div class="meta-item"><div class="meta-label">Total Pages</div><div class="meta-value">${s.total_pages}</div></div><div class="meta-item"><div class="meta-label">Total Time</div><div class="meta-value">${fmtTime(s.total_time_ms)}</div></div>`;
-            r.appendChild(summary);
-
-            for(const fileResult of data.results){
-                const group=document.createElement('div');group.className='batch-group';
-                group.innerHTML=`<div class="batch-header"><h3>${esc(fileResult.filename)}</h3><span>${fileResult.metadata?.page_count||'?'} pages · ${fmtBytes(fileResult.metadata?.file_size||0)}</span></div>`;
+            const r=$('results');r.innerHTML='';$('toolbar').classList.add('visible');
+            const s=data.summary,sm=document.createElement('div');sm.className='metadata-panel';
+            sm.innerHTML=`<div class="meta-item"><div class="meta-label">FILES</div><div class="meta-value">${s.total_files}</div></div><div class="meta-item"><div class="meta-label">PAGES</div><div class="meta-value">${s.total_pages}</div></div><div class="meta-item"><div class="meta-label">TIME</div><div class="meta-value">${fmtTime(s.total_time_ms)}</div></div>`;
+            r.appendChild(sm);
+            for(const f of data.results){
+                const g=document.createElement('div');g.className='batch-group';
+                g.innerHTML=`<div class="batch-header"><h3>${esc(f.filename)}</h3><span>${f.metadata?.page_count||'?'}pg | ${fmtBytes(f.metadata?.file_size||0)}</span></div>`;
                 const inner=document.createElement('div');inner.className='results-grid';
-                renderTextResults(fileResult.results,inner);
-                group.appendChild(inner);
-                r.appendChild(group);
+                renderTextResults(f.results,inner);g.appendChild(inner);r.appendChild(g);
             }
         }
 
-        // --- Diff ---
         function populateDiffSelectors(){
-            const libs=Object.keys(resultTexts);
-            const a=$('diffA'),b=$('diffB');
+            const libs=Object.keys(resultTexts),a=$('diffA'),b=$('diffB');
             a.innerHTML=libs.map(l=>`<option value="${esc(l)}">${esc(l)}</option>`).join('');
             b.innerHTML=libs.map(l=>`<option value="${esc(l)}">${esc(l)}</option>`).join('');
             if(libs.length>=2)b.selectedIndex=1;
         }
-        function openDiffPicker(){
-            const els=[$('diffA'),$('diffVs'),$('diffB'),$('diffGoBtn')];
-            const show=els[0].style.display==='none';
-            els.forEach(el=>el.style.display=show?'':'none');
-        }
+        function openDiffPicker(){const els=[$('diffA'),$('diffVs'),$('diffB'),$('diffGoBtn')];const s=els[0].style.display==='none';els.forEach(el=>el.style.display=s?'':'none')}
         async function runDiff(){
-            const a=$('diffA').value,b=$('diffB').value;
-            if(!a||!b||a===b)return;
-            const fd=new FormData();
-            fd.append('text_a',resultTexts[a]);
-            fd.append('text_b',resultTexts[b]);
-            fd.append('lib_a',a);fd.append('lib_b',b);
-            const resp=await fetch('/diff',{method:'POST',body:fd});
-            const data=await resp.json();
-            $('diffTitle').textContent=`${a} vs ${b}`;
-            $('diffStats').innerHTML=`<span class="add">+${data.stats.additions} added</span><span class="del">-${data.stats.deletions} removed</span><span class="sim">${data.stats.similarity}% similar</span>`;
-            const lines=data.unified_diff.split('\n').map(l=>{
-                const el=esc(l);
-                if(l.startsWith('+++')||l.startsWith('---'))return`<div class="line-info">${el}</div>`;
-                if(l.startsWith('+')){return`<div class="line-add">${el}</div>`}
-                if(l.startsWith('-'))return`<div class="line-del">${el}</div>`;
-                if(l.startsWith('@@'))return`<div class="line-info">${el}</div>`;
-                return`<div>${el}</div>`;
-            }).join('');
-            $('diffContent').innerHTML=lines;
+            const a=$('diffA').value,b=$('diffB').value;if(!a||!b||a===b)return;
+            const fd=new FormData();fd.append('text_a',resultTexts[a]);fd.append('text_b',resultTexts[b]);fd.append('lib_a',a);fd.append('lib_b',b);
+            const resp=await fetch('/diff',{method:'POST',body:fd});const data=await resp.json();
+            $('diffTitle').textContent=`> ${a} vs ${b}`;
+            $('diffStats').innerHTML=`<span class="add">+${data.stats.additions}</span><span class="del">-${data.stats.deletions}</span><span class="sim">${data.stats.similarity}%</span>`;
+            $('diffContent').innerHTML=data.unified_diff.split('\n').map(l=>{const e=esc(l);if(l.startsWith('+++')||l.startsWith('---'))return`<div class="line-info">${e}</div>`;if(l.startsWith('+'))return`<div class="line-add">${e}</div>`;if(l.startsWith('-'))return`<div class="line-del">${e}</div>`;if(l.startsWith('@@'))return`<div class="line-info">${e}</div>`;return`<div>${e}</div>`}).join('');
             $('diffOverlay').classList.add('active');
         }
         function closeDiff(){$('diffOverlay').classList.remove('active')}
 
-        // --- History ---
         async function toggleHistory(){
-            const d=$('historyDrawer');
-            if(d.classList.contains('open')){d.classList.remove('open');return}
-            const resp=await fetch('/history');
-            const items=await resp.json();
-            const list=$('historyList');
-            list.innerHTML=items.map(i=>`<div class="history-item" onclick="loadResult('${i.id}')"><div class="h-name">${esc(i.filename)}</div><div class="h-meta">${fmtBytes(i.file_size)} · ${i.result_count} results · ${new Date(i.created_at).toLocaleString()}</div></div>`).join('');
+            const d=$('historyDrawer');if(d.classList.contains('open')){d.classList.remove('open');return}
+            const resp=await fetch('/history');const items=await resp.json();
+            $('historyList').innerHTML=items.map(i=>`<div class="history-item" onclick="loadResult('${i.id}')"><div class="h-name">${esc(i.filename)}</div><div class="h-meta">${fmtBytes(i.file_size)} | ${i.result_count} results | ${new Date(i.created_at).toLocaleString()}</div></div>`).join('');
             d.classList.add('open');
         }
         async function loadResult(id){
-            const resp=await fetch('/result/'+id);
-            const data=await resp.json();
-            if(data.error)return;
-            currentData=data;
-            resultTexts={};
-            for(const[k,v]of Object.entries(data.results||{})){if(v.text)resultTexts[k]=v.text;}
-            $('emptyState').style.display='none';
-            renderAll(data);
-            $('historyDrawer').classList.remove('open');
+            const resp=await fetch('/result/'+id);const data=await resp.json();if(data.error)return;
+            currentData=data;resultTexts={};
+            for(const[k,v]of Object.entries(data.results||{})){if(v.text)resultTexts[k]=v.text}
+            $('emptyState').style.display='none';renderAll(data);$('historyDrawer').classList.remove('open');
         }
 
-        // --- Export ---
         function exportResult(fmt){
-            if(currentData&&currentData.id){
-                window.open('/export/'+currentData.id+'/'+fmt);
-            }else{
-                // Client-side fallback
-                const blob=fmt==='json'
-                    ?new Blob([JSON.stringify(currentData,null,2)],{type:'application/json'})
-                    :new Blob([Object.entries(resultTexts).map(([k,v])=>`--- ${k} ---\n${v}`).join('\n\n')],{type:'text/plain'});
-                const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-                a.download='extraction.'+fmt;a.click();
-            }
+            if(currentData&&currentData.id){window.open('/export/'+currentData.id+'/'+fmt)}
+            else{const blob=fmt==='json'?new Blob([JSON.stringify(currentData,null,2)],{type:'application/json'}):new Blob([Object.entries(resultTexts).map(([k,v])=>`--- ${k} ---\n${v}`).join('\n\n')],{type:'text/plain'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='extraction.'+fmt;a.click()}
         }
-
-        // --- Share ---
         function shareResult(){
             if(!currentData||!currentData.id)return;
-            const url=window.location.origin+'/share/'+currentData.id;
-            navigator.clipboard.writeText(url);
-            const btn=$('shareBtn');btn.textContent='Link copied!';
-            setTimeout(()=>btn.textContent='Share',2000);
+            navigator.clipboard.writeText(window.location.origin+'/share/'+currentData.id);
+            const b=$('shareBtn');b.textContent='[copied!]';setTimeout(()=>b.textContent='[share]',2000);
         }
+        function downloadCSV(btn,fn){const b=new Blob([btn.dataset.csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=fn;a.click()}
 
-        // --- Table CSV download ---
-        function downloadCSV(btn,filename){
-            const csv=btn.dataset.csv;
-            const blob=new Blob([csv],{type:'text/csv'});
-            const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();
-        }
-
-        // --- Helpers ---
-        function showError(msg){$('results').innerHTML=`<div class="result-card"><div class="card-header"><span class="card-title">Error</span></div><div class="card-body"><pre class="error-text">${esc(msg)}</pre></div></div>`}
-        function copyText(btn){const t=btn.nextElementSibling.textContent;navigator.clipboard.writeText(t);btn.textContent='Copied!';setTimeout(()=>btn.textContent='Copy',1500)}
-        function fmtBytes(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB'}
-        function fmtTime(ms){return(ms/1000).toFixed(2)+' s'}
+        function showError(msg){$('results').innerHTML=`<div class="result-card"><div class="card-header"><span class="card-title">ERROR</span></div><div class="card-body"><pre class="error-text">${esc(msg)}</pre></div></div>`}
+        function copyText(btn){navigator.clipboard.writeText(btn.nextElementSibling.textContent);btn.textContent='[ok!]';setTimeout(()=>btn.textContent='[copy]',1500)}
+        function fmtBytes(b){if(b<1024)return b+'B';if(b<1048576)return(b/1024).toFixed(1)+'K';return(b/1048576).toFixed(1)+'M'}
+        function fmtTime(ms){return(ms/1000).toFixed(2)+'s'}
         function esc(s){const d=document.createElement('div');d.textContent=String(s);return d.innerHTML}
     </script>
 </body>

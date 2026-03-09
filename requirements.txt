@@ -8,3 +8,4 @@ pytesseract
 easyocr
 boto3
 python-dotenv
+llama-parse

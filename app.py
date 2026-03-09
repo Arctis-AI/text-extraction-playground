@@ -67,6 +67,9 @@ AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 AWS_REGION = os.environ.get("AWS_REGION", "eu-central-1")
 S3_BUCKET = os.environ.get("S3_BUCKET", "arctis-core")
 
+# LlamaCloud config
+LLAMA_CLOUD_API_KEY = os.environ.get("LLAMA_CLOUD_API_KEY", "")
+
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "extractions.db")
 
 # --- Database ---
@@ -434,6 +437,54 @@ def extract_with_textract(pdf_bytes: bytes, pages=None, lang=None) -> str:
             pass
 
 
+def extract_with_llamaparse(pdf_bytes: bytes, pages=None, lang=None) -> str:
+    """Extract text using LlamaIndex LlamaParse cloud API."""
+    import tempfile
+    import asyncio
+    from llama_parse import LlamaParse
+
+    # LlamaParse needs a file path, so write to temp file
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        # If specific pages requested, create a subset PDF
+        if pages is not None:
+            from pypdf import PdfReader, PdfWriter
+            reader = PdfReader(io.BytesIO(pdf_bytes))
+            writer = PdfWriter()
+            for i in pages:
+                if i < len(reader.pages):
+                    writer.add_page(reader.pages[i])
+            writer.write(tmp)
+        else:
+            tmp.write(pdf_bytes)
+        tmp_path = tmp.name
+
+    try:
+        parser = LlamaParse(
+            api_key=LLAMA_CLOUD_API_KEY,
+            result_type="text",
+        )
+
+        # LlamaParse uses async, run in event loop
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    documents = pool.submit(asyncio.run, parser.aload_data(tmp_path)).result()
+            else:
+                documents = loop.run_until_complete(parser.aload_data(tmp_path))
+        except RuntimeError:
+            documents = asyncio.run(parser.aload_data(tmp_path))
+
+        result = []
+        for i, doc in enumerate(documents, 1):
+            page_num = pages[i - 1] + 1 if pages and i - 1 < len(pages) else i
+            result.append(f"--- Page {page_num} ---\n{doc.text}")
+        return "\n\n".join(result) if result else "(no text extracted)"
+    finally:
+        os.unlink(tmp_path)
+
+
 # --- Table extraction ---
 
 def extract_tables(pdf_bytes: bytes, pages=None) -> list[dict]:
@@ -512,6 +563,11 @@ EXTRACTORS = {
     "aws-textract": {
         "func": extract_with_textract,
         "description": "AWS Textract, cloud OCR with high accuracy",
+        "category": "cloud",
+    },
+    "llama-parse": {
+        "func": extract_with_llamaparse,
+        "description": "LlamaIndex LlamaParse, AI-powered extraction",
         "category": "cloud",
     },
 }
