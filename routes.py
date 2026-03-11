@@ -104,6 +104,8 @@ def _run_extraction(pdf_bytes, filename, selected, pages_str, lang, mode,
                 text = func(pdf_bytes, pages=pages, **kwargs)
                 elapsed = time.perf_counter() - start
                 results[name] = {"text": text, "error": None, "time_ms": round(elapsed * 1000, 1)}
+            except ImportError as e:
+                results[name] = {"text": None, "error": str(e), "time_ms": None}
             except Exception:
                 results[name] = {"text": None, "error": traceback.format_exc(), "time_ms": None}
 

@@ -5,7 +5,10 @@ import tempfile
 
 def extract_with_docling(pdf_bytes: bytes, pages=None, lang=None, **kwargs) -> str:
     """Extract text using Docling (IBM) with TableFormer."""
-    from docling.document_converter import DocumentConverter
+    try:
+        from docling.document_converter import DocumentConverter
+    except ImportError:
+        raise ImportError("docling is not installed. Run: pip install docling")
 
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
         if pages is not None:

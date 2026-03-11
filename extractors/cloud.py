@@ -10,7 +10,10 @@ from config import (
 
 def extract_with_textract(pdf_bytes: bytes, pages=None, lang=None, **kwargs) -> str:
     """Extract text using AWS Textract."""
-    import boto3
+    try:
+        import boto3
+    except ImportError:
+        raise ImportError("boto3 is not installed. Run: pip install boto3")
 
     session = boto3.Session(
         aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -101,7 +104,10 @@ def extract_with_llamaparse(pdf_bytes: bytes, pages=None, lang=None, **kwargs) -
     import asyncio
     import tempfile
 
-    from llama_parse import LlamaParse
+    try:
+        from llama_parse import LlamaParse
+    except ImportError:
+        raise ImportError("llama-parse is not installed. Run: pip install llama-parse")
 
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
         if pages is not None:

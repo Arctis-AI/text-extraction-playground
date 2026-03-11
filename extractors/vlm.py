@@ -18,7 +18,10 @@ def _encode_image(img) -> str:
 
 def extract_with_vlm_claude(pdf_bytes: bytes, pages=None, lang=None, prompt=None, **kwargs) -> str:
     """Extract text using Claude vision (Anthropic API)."""
-    import anthropic
+    try:
+        import anthropic
+    except ImportError:
+        raise ImportError("anthropic is not installed. Run: pip install anthropic")
 
     prompt = prompt or DEFAULT_VLM_PROMPT
     images = pdf_to_images(pdf_bytes, dpi=150, pages=pages)
@@ -45,7 +48,10 @@ def extract_with_vlm_claude(pdf_bytes: bytes, pages=None, lang=None, prompt=None
 
 def extract_with_vlm_openai(pdf_bytes: bytes, pages=None, lang=None, prompt=None, **kwargs) -> str:
     """Extract text using GPT-4o vision (OpenAI API)."""
-    from openai import OpenAI
+    try:
+        from openai import OpenAI
+    except ImportError:
+        raise ImportError("openai is not installed. Run: pip install openai")
 
     prompt = prompt or DEFAULT_VLM_PROMPT
     images = pdf_to_images(pdf_bytes, dpi=150, pages=pages)
@@ -72,8 +78,11 @@ def extract_with_vlm_openai(pdf_bytes: bytes, pages=None, lang=None, prompt=None
 
 def extract_with_vlm_gemini(pdf_bytes: bytes, pages=None, lang=None, prompt=None, **kwargs) -> str:
     """Extract text using Gemini via Google Vertex AI."""
-    import vertexai
-    from vertexai.generative_models import GenerativeModel, Part
+    try:
+        import vertexai
+        from vertexai.generative_models import GenerativeModel, Part
+    except ImportError:
+        raise ImportError("google-cloud-aiplatform is not installed. Run: pip install google-cloud-aiplatform")
 
     prompt = prompt or DEFAULT_VLM_PROMPT
     vertexai.init(project=GOOGLE_PROJECT_ID, location=GOOGLE_LOCATION)
