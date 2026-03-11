@@ -9,3 +9,7 @@ easyocr
 boto3
 python-dotenv
 llama-parse
+docling
+anthropic
+openai
+google-cloud-aiplatform

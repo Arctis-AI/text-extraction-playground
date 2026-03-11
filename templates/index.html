@@ -47,6 +47,7 @@
         .input-field{flex:1;padding:6px 8px;background:#1a1a2e;border:2px solid #0f3460;color:#c8c8d4;font-size:.7rem;font-family:'IBM Plex Mono',monospace;outline:none}
         .input-field:focus{border-color:#e94560}
         .input-field::placeholder{color:#3a3a4e}
+        textarea.input-field{resize:vertical;min-height:40px;line-height:1.5}
         select.input-field{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2353565a' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;padding-right:24px}
 
         /* Mode toggle */
@@ -72,6 +73,8 @@
         .lib-cat{font-family:'Press Start 2P',monospace;font-size:.35rem;padding:2px 4px;border:1px solid;flex-shrink:0}
         .lib-cat.ocr{border-color:#4ade80;color:#4ade80}
         .lib-cat.cloud{border-color:#fbbf24;color:#fbbf24}
+        .lib-cat.ai{border-color:#a78bfa;color:#a78bfa}
+        .lib-cat.vlm{border-color:#38bdf8;color:#38bdf8}
 
         .quick-actions{display:flex;gap:8px;margin-bottom:4px}
         .quick-actions button{font-size:.6rem;color:#53565a;background:none;border:none;cursor:pointer;font-family:'IBM Plex Mono',monospace;padding:0;text-decoration:underline}
@@ -309,6 +312,38 @@
                         {% endfor %}
                     </div>
                 </div>
+
+                <!-- AI libraries -->
+                <div id="aiLibSection">
+                    <div class="label">// document ai</div>
+                    <div class="lib-group">
+                        {% for name, info in libraries.items() if info.category == 'ai' %}
+                        <label class="lib-item" data-lib="{{ name }}" data-cat="ai">
+                            <input type="checkbox" name="lib" value="{{ name }}">
+                            <div class="lib-checkbox"><svg width="6" height="6" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#1a1a2e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <div class="lib-details"><div class="name">{{ name }}</div><div class="desc">{{ info.description }}</div></div>
+                            <span class="lib-cat ai">AI</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- VLM libraries -->
+                <div id="vlmLibSection">
+                    <div class="label">// vision llm</div>
+                    <div class="lib-group">
+                        {% for name, info in libraries.items() if info.category == 'vlm' %}
+                        <label class="lib-item" data-lib="{{ name }}" data-cat="vlm">
+                            <input type="checkbox" name="lib" value="{{ name }}">
+                            <div class="lib-checkbox"><svg width="6" height="6" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#1a1a2e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <div class="lib-details"><div class="name">{{ name }}</div><div class="desc">{{ info.description }}</div></div>
+                            <span class="lib-cat vlm">VLM</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <div class="label" style="margin-top:8px">// vlm prompt</div>
+                    <textarea class="input-field" id="vlmPrompt" rows="3" placeholder="custom prompt (default: extract all text...)"></textarea>
+                </div>
             </div>
             <div class="sidebar-footer">
                 <button class="btn-extract" id="extractBtn" disabled>[ EXTRACT ]</button>
@@ -454,13 +489,14 @@
             $('spinnerText').textContent=selectedFiles.length>1?`> extracting ${selectedFiles.length} files...`:'> extracting...';
             $('spinner').classList.add('active');
             $('results').innerHTML='';$('emptyState').style.display='none';
-            const pages=$('pagesInput').value,lang=getSelectedLangs(),libs=getSelectedLibs();
+            const pages=$('pagesInput').value,lang=getSelectedLangs(),libs=getSelectedLibs(),vlmPrompt=$('vlmPrompt').value;
             try{
                 let data;
                 if(selectedFiles.length===1){
                     const fd=new FormData();fd.append('file',selectedFiles[0]);
                     libs.forEach(l=>fd.append('libraries',l));fd.append('mode',currentMode);
                     if(pages)fd.append('pages',pages);if(lang)fd.append('lang',lang);
+                    if(vlmPrompt)fd.append('vlm_prompt',vlmPrompt);
                     const resp=await fetch('/extract',{method:'POST',body:fd});data=await resp.json();
                     if(data.error){showError(data.error);$('spinner').classList.remove('active');return}
                     currentData=data;resultTexts={};
@@ -470,6 +506,7 @@
                     const fd=new FormData();selectedFiles.forEach(f=>fd.append('files',f));
                     libs.forEach(l=>fd.append('libraries',l));fd.append('mode',currentMode);
                     if(pages)fd.append('pages',pages);if(lang)fd.append('lang',lang);
+                    if(vlmPrompt)fd.append('vlm_prompt',vlmPrompt);
                     const resp=await fetch('/batch-extract',{method:'POST',body:fd});data=await resp.json();
                     if(data.error){showError(data.error);$('spinner').classList.remove('active');return}
                     currentData=data;renderBatch(data);
