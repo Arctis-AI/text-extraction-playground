@@ -13,7 +13,7 @@ from db import get_db
 from extractors import EXTRACTORS, EXTENDED_CATEGORIES
 from pdf_utils import (
     get_pdf_metadata, detect_scanned, parse_pages,
-    extract_tables, compute_similarity,
+    extract_tables, extract_bboxes, compute_similarity,
 )
 
 bp = Blueprint("main", __name__)
@@ -222,6 +222,25 @@ def batch_extract():
             "total_time_ms": round(total_time, 1),
         }
     })
+
+
+@bp.route("/bbox", methods=["POST"])
+def bbox():
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+    file = request.files["file"]
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        return jsonify({"error": "Please upload a PDF file"}), 400
+
+    pdf_bytes = file.read()
+    pages_str = request.form.get("pages", "")
+
+    from pypdf import PdfReader
+    reader = PdfReader(io.BytesIO(pdf_bytes))
+    pages = parse_pages(pages_str, len(reader.pages))
+
+    result = extract_bboxes(pdf_bytes, pages=pages)
+    return jsonify({"filename": file.filename, "pages": result})
 
 
 @bp.route("/diff", methods=["POST"])

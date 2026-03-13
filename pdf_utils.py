@@ -120,6 +120,109 @@ def pdf_to_images(pdf_bytes: bytes, dpi: int = 300, pages=None):
     return images
 
 
+def extract_bboxes(pdf_bytes: bytes, dpi: int = 150, pages=None) -> list[dict]:
+    """Extract text bounding boxes at block/line/word granularity plus rendered page images."""
+    import base64
+    import pymupdf
+
+    result = []
+    scale = dpi / 72
+
+    with pymupdf.open(stream=pdf_bytes, filetype="pdf") as doc:
+        for i, page in enumerate(doc):
+            if pages is not None and i not in pages:
+                continue
+
+            # Render page image
+            mat = pymupdf.Matrix(scale, scale)
+            pix = page.get_pixmap(matrix=mat)
+            img_bytes = pix.tobytes("png")
+            image_b64 = base64.b64encode(img_bytes).decode("ascii")
+
+            def _int_to_rgb(c):
+                """Convert PyMuPDF integer color to [r,g,b] 0-255."""
+                return [(c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF]
+
+            # Block-level and line-level bboxes from dict output
+            blocks = []
+            lines = []
+            # Also build a spatial lookup for span colors (used for word-level)
+            span_colors = []  # list of (bbox_scaled, rgb)
+            dict_data = page.get_text("dict")
+            for block in dict_data.get("blocks", []):
+                if block.get("type") != 0:  # skip image blocks
+                    continue
+                bbox = block["bbox"]
+                block_text_parts = []
+                block_colors = []
+                for line in block.get("lines", []):
+                    line_bbox = line["bbox"]
+                    line_text_parts = []
+                    line_colors = []
+                    for span in line.get("spans", []):
+                        text = span.get("text", "")
+                        rgb = _int_to_rgb(span.get("color", 0))
+                        line_text_parts.append(text)
+                        line_colors.append(rgb)
+                        if text.strip():
+                            sb = span["bbox"]
+                            span_colors.append((
+                                [sb[0] * scale, sb[1] * scale, sb[2] * scale, sb[3] * scale],
+                                rgb
+                            ))
+                    line_text = "".join(line_text_parts)
+                    # Pick most common color in line
+                    dominant = line_colors[0] if line_colors else [0, 0, 0]
+                    if line_text.strip():
+                        lines.append({
+                            "bbox": [round(c * scale, 1) for c in line_bbox],
+                            "text": line_text,
+                            "color": dominant,
+                        })
+                    block_text_parts.append(line_text)
+                    block_colors.extend(line_colors)
+                block_text = "\n".join(block_text_parts)
+                dominant = block_colors[0] if block_colors else [0, 0, 0]
+                if block_text.strip():
+                    blocks.append({
+                        "bbox": [round(c * scale, 1) for c in bbox],
+                        "text": block_text,
+                        "color": dominant,
+                    })
+
+            # Word-level bboxes — match each word to nearest span for color
+            words = []
+            for w in page.get_text("words"):
+                x0, y0, x1, y1, text = w[:5]
+                if not text.strip():
+                    continue
+                sx0, sy0, sx1, sy1 = x0 * scale, y0 * scale, x1 * scale, y1 * scale
+                # Find overlapping span color
+                rgb = [0, 0, 0]
+                for sb, sc in span_colors:
+                    # Check overlap
+                    if sx0 < sb[2] and sx1 > sb[0] and sy0 < sb[3] and sy1 > sb[1]:
+                        rgb = sc
+                        break
+                words.append({
+                    "bbox": [round(sx0, 1), round(sy0, 1), round(sx1, 1), round(sy1, 1)],
+                    "text": text,
+                    "color": rgb,
+                })
+
+            result.append({
+                "page": i + 1,
+                "width": pix.width,
+                "height": pix.height,
+                "image_b64": image_b64,
+                "blocks": blocks,
+                "lines": lines,
+                "words": words,
+            })
+
+    return result
+
+
 def extract_tables(pdf_bytes: bytes, pages=None) -> list[dict]:
     import pdfplumber
 
