@@ -156,6 +156,15 @@
         .lib-cat.cloud{border-color:var(--yellow);color:var(--yellow)}
         .lib-cat.ai{border-color:var(--purple);color:var(--purple)}
         .lib-cat.vlm{border-color:var(--blue);color:var(--blue)}
+        .hw-badge{font-family:var(--label-font);font-size:.35rem;padding:2px 4px;border:1px solid var(--yellow);color:var(--yellow);border-radius:calc(var(--radius) / 2);flex-shrink:0;display:none}
+        .handwriting-active .hw-badge{display:inline-block}
+        .handwriting-toggle{display:flex;align-items:center;gap:8px;padding:6px 0}
+        .hw-switch{position:relative;width:28px;height:16px;flex-shrink:0}
+        .hw-switch input{opacity:0;width:0;height:0}
+        .hw-slider{position:absolute;inset:0;background:var(--border);border-radius:8px;cursor:pointer;transition:.2s}
+        .hw-slider::before{content:'';position:absolute;width:12px;height:12px;left:2px;bottom:2px;background:var(--bg-panel);border-radius:50%;transition:.2s}
+        .hw-switch input:checked+.hw-slider{background:var(--accent)}
+        .hw-switch input:checked+.hw-slider::before{transform:translateX(12px)}
 
         .quick-actions{display:flex;gap:8px;margin-bottom:4px}
         .quick-actions button{font-size:.6rem;color:var(--text-dim);background:none;border:none;cursor:pointer;font-family:var(--font-body);padding:0;text-decoration:underline}
@@ -367,6 +376,10 @@
                     <div class="input-row" style="margin-bottom:8px">
                         <input class="input-field" id="pagesInput" placeholder="pages: all (eg 1,3,5-8)">
                     </div>
+                    <div class="handwriting-toggle">
+                        <label class="hw-switch"><input type="checkbox" id="hwToggle" onchange="toggleHandwriting(this.checked)"><span class="hw-slider"></span></label>
+                        <span style="font-size:.65rem;color:var(--text-dim)">Handwriting detection</span>
+                    </div>
                     <div class="label" style="margin-top:6px">// ocr lang</div>
                     <div class="lang-grid" id="langGrid">
                         {% for code, info in languages.items() %}
@@ -409,6 +422,7 @@
                             <input type="checkbox" name="lib" value="{{ name }}">
                             <div class="lib-checkbox"><svg width="6" height="6" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="var(--bg-main)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
                             <div class="lib-details"><div class="name">{{ name }}</div><div class="desc">{{ info.description }}</div></div>
+                            {% if info.handwriting %}<span class="hw-badge">HW</span>{% endif %}
                             <span class="lib-cat ocr">OCR</span>
                         </label>
                         {% endfor %}
@@ -424,6 +438,7 @@
                             <input type="checkbox" name="lib" value="{{ name }}">
                             <div class="lib-checkbox"><svg width="6" height="6" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="var(--bg-main)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
                             <div class="lib-details"><div class="name">{{ name }}</div><div class="desc">{{ info.description }}</div></div>
+                            {% if info.handwriting %}<span class="hw-badge">HW</span>{% endif %}
                             <span class="lib-cat cloud">CLOUD</span>
                         </label>
                         {% endfor %}
@@ -454,6 +469,7 @@
                             <input type="checkbox" name="lib" value="{{ name }}">
                             <div class="lib-checkbox"><svg width="6" height="6" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="var(--bg-main)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
                             <div class="lib-details"><div class="name">{{ name }}</div><div class="desc">{{ info.description }}</div></div>
+                            {% if info.handwriting %}<span class="hw-badge">HW</span>{% endif %}
                             <span class="lib-cat vlm">VLM</span>
                         </label>
                         {% endfor %}
@@ -535,6 +551,7 @@
         let resultTexts={};
         let currentGranularity='words';
         let bboxData=null;
+        let handwritingMode=false;
 
         // Theme
         function setTheme(t){
@@ -594,6 +611,11 @@
             if(bboxData)renderBboxResults(bboxData);
         }
 
+        function toggleHandwriting(on){
+            handwritingMode=on;
+            document.querySelector('.sidebar-content').classList.toggle('handwriting-active',on);
+        }
+
         document.querySelectorAll('.lib-item').forEach(el=>{
             el.addEventListener('click',()=>{
                 if(el.classList.contains('disabled'))return;
@@ -629,6 +651,8 @@
                 if(currentMode==='bbox'){
                     const fd=new FormData();fd.append('file',selectedFiles[0]);
                     if(pages)fd.append('pages',pages);
+                    if(handwritingMode)fd.append('handwriting','1');
+                    if(lang)fd.append('lang',lang);
                     const resp=await fetch('/bbox',{method:'POST',body:fd});data=await resp.json();
                     if(data.error){showError(data.error);$('spinner').classList.remove('active');return}
                     bboxData=data;
@@ -642,6 +666,7 @@
                     libs.forEach(l=>fd.append('libraries',l));fd.append('mode',currentMode);
                     if(pages)fd.append('pages',pages);if(lang)fd.append('lang',lang);
                     if(vlmPrompt)fd.append('vlm_prompt',vlmPrompt);
+                    if(handwritingMode)fd.append('handwriting','1');
                     const resp=await fetch('/extract',{method:'POST',body:fd});data=await resp.json();
                     if(data.error){showError(data.error);$('spinner').classList.remove('active');return}
                     currentData=data;resultTexts={};
@@ -652,6 +677,7 @@
                     libs.forEach(l=>fd.append('libraries',l));fd.append('mode',currentMode);
                     if(pages)fd.append('pages',pages);if(lang)fd.append('lang',lang);
                     if(vlmPrompt)fd.append('vlm_prompt',vlmPrompt);
+                    if(handwritingMode)fd.append('handwriting','1');
                     const resp=await fetch('/batch-extract',{method:'POST',body:fd});data=await resp.json();
                     if(data.error){showError(data.error);$('spinner').classList.remove('active');return}
                     currentData=data;renderBatch(data);
@@ -723,11 +749,15 @@
             const gran=currentGranularity;
             const fallbacks={blocks:[239,68,68],lines:[59,130,246],words:[16,185,129]};
             const fb=fallbacks[gran]||fallbacks.words;
+            const ocrColor=[255,165,0]; // orange for OCR-detected text
+            const hasOcr=data.has_ocr;
 
             for(const pg of data.pages){
                 const card=document.createElement('div');card.className='result-card';
                 const items=pg[gran]||[];
-                card.innerHTML=`<div class="card-header"><div class="card-header-left"><span class="card-title">page ${pg.page}</span><span class="bbox-count-badge">${items.length} ${gran}</span></div></div><div class="card-body" style="padding:8px"><div class="bbox-canvas-wrap"><canvas></canvas><div class="bbox-tooltip"></div></div></div>`;
+                const ocrItems=pg.ocr_words||[];
+                const ocrLabel=hasOcr?`<span class="bbox-count-badge" style="color:rgb(${ocrColor})">${ocrItems.length} ocr</span>`:'';
+                card.innerHTML=`<div class="card-header"><div class="card-header-left"><span class="card-title">page ${pg.page}</span><span class="bbox-count-badge">${items.length} ${gran}</span>${ocrLabel}</div></div><div class="card-body" style="padding:8px"><div class="bbox-canvas-wrap"><canvas></canvas><div class="bbox-tooltip"></div></div></div>`;
                 r.appendChild(card);
 
                 const wrap=card.querySelector('.bbox-canvas-wrap');
@@ -735,20 +765,36 @@
                 const tooltip=card.querySelector('.bbox-tooltip');
                 const ctx=canvas.getContext('2d');
 
+                // Combine all items for tooltip lookup
+                const allItems=[...items.map(it=>({...it,source:'text'})),...ocrItems.map(it=>({...it,source:'ocr'}))];
+
                 const img=new Image();
                 img.onload=function(){
                     canvas.width=img.width;canvas.height=img.height;
                     ctx.drawImage(img,0,0);
                     ctx.lineWidth=2;
+                    // Draw text bboxes
                     for(const item of items){
                         const[x0,y0,x1,y1]=item.bbox;
                         const c=item.color||fb;
-                        // Use text color if non-black, otherwise use granularity fallback
                         const rgb=(c[0]+c[1]+c[2]>30)?c:fb;
                         ctx.fillStyle=`rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.12)`;
                         ctx.strokeStyle=`rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.7)`;
                         ctx.fillRect(x0,y0,x1-x0,y1-y0);
                         ctx.strokeRect(x0,y0,x1-x0,y1-y0);
+                    }
+                    // Draw OCR bboxes
+                    if(hasOcr){
+                        ctx.lineWidth=2;
+                        ctx.setLineDash([4,3]);
+                        for(const item of ocrItems){
+                            const[x0,y0,x1,y1]=item.bbox;
+                            ctx.fillStyle=`rgba(${ocrColor[0]},${ocrColor[1]},${ocrColor[2]},0.10)`;
+                            ctx.strokeStyle=`rgba(${ocrColor[0]},${ocrColor[1]},${ocrColor[2]},0.8)`;
+                            ctx.fillRect(x0,y0,x1-x0,y1-y0);
+                            ctx.strokeRect(x0,y0,x1-x0,y1-y0);
+                        }
+                        ctx.setLineDash([]);
                     }
                 };
                 img.src='data:image/png;base64,'+pg.image_b64;
@@ -758,12 +804,13 @@
                     const scaleX=canvas.width/rect.width,scaleY=canvas.height/rect.height;
                     const mx=(e.clientX-rect.left)*scaleX,my=(e.clientY-rect.top)*scaleY;
                     let found=null;
-                    for(const item of items){
+                    for(const item of allItems){
                         const[x0,y0,x1,y1]=item.bbox;
                         if(mx>=x0&&mx<=x1&&my>=y0&&my<=y1){found=item;break}
                     }
                     if(found){
-                        tooltip.textContent=found.text;
+                        const label=found.source==='ocr'?`[OCR${found.conf!=null?' '+found.conf+'%':''}] ${found.text}`:found.text;
+                        tooltip.textContent=label;
                         tooltip.style.display='block';
                         tooltip.style.left=Math.min(e.clientX-wrap.getBoundingClientRect().left+10,wrap.offsetWidth-200)+'px';
                         tooltip.style.top=(e.clientY-wrap.getBoundingClientRect().top+10)+'px';

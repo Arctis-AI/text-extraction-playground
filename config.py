@@ -43,3 +43,12 @@ DEFAULT_VLM_PROMPT = (
     "Preserve the original formatting, layout, and structure as much as possible. "
     "Output only the extracted text, no commentary."
 )
+
+HANDWRITING_VLM_PROMPT = (
+    "This document contains handwritten text. "
+    "Carefully read and extract ALL handwritten text from this page, "
+    "including any printed text that may also be present. "
+    "Preserve the original layout and structure as much as possible. "
+    "If handwriting is unclear, provide your best interpretation with [?] for uncertain words. "
+    "Output only the extracted text, no commentary."
+)

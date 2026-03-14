@@ -2,9 +2,13 @@ from extractors.text import (
     extract_with_pypdf, extract_with_pdfplumber,
     extract_with_pdfminer, extract_with_pymupdf,
 )
-from extractors.ocr import (
-    extract_with_tesseract, extract_with_easyocr, extract_with_pymupdf_ocr,
-)
+from extractors.ocr import extract_with_tesseract, extract_with_pymupdf_ocr
+
+try:
+    from extractors.ocr import extract_with_easyocr
+except ImportError:
+    def extract_with_easyocr(*args, **kwargs):
+        raise ImportError("easyocr is not installed. Install it with: pip install easyocr")
 from extractors.cloud import extract_with_textract, extract_with_llamaparse
 from extractors.ai import extract_with_docling
 from extractors.vlm import (
@@ -36,21 +40,25 @@ EXTRACTORS = {
         "func": extract_with_tesseract,
         "description": "Classic OCR engine",
         "category": "ocr",
+        "handwriting": True,
     },
     "easyocr": {
         "func": extract_with_easyocr,
         "description": "Deep learning, better with handwriting",
         "category": "ocr",
+        "handwriting": True,
     },
     "pymupdf-ocr": {
         "func": extract_with_pymupdf_ocr,
         "description": "PyMuPDF built-in OCR via Tesseract",
         "category": "ocr",
+        "handwriting": True,
     },
     "aws-textract": {
         "func": extract_with_textract,
         "description": "AWS Textract, cloud OCR with high accuracy",
         "category": "cloud",
+        "handwriting": True,
     },
     "llama-parse": {
         "func": extract_with_llamaparse,
@@ -66,16 +74,19 @@ EXTRACTORS = {
         "func": extract_with_vlm_claude,
         "description": "Claude vision, multimodal extraction",
         "category": "vlm",
+        "handwriting": True,
     },
     "vlm-openai": {
         "func": extract_with_vlm_openai,
         "description": "GPT-4o vision, multimodal extraction",
         "category": "vlm",
+        "handwriting": True,
     },
     "vlm-gemini": {
         "func": extract_with_vlm_gemini,
         "description": "Gemini 2.0 Flash via Vertex AI",
         "category": "vlm",
+        "handwriting": True,
     },
 }
 

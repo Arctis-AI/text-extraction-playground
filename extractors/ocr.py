@@ -2,14 +2,15 @@ from config import DEFAULT_LANG, LANGUAGES
 from pdf_utils import pdf_to_images
 
 
-def extract_with_tesseract(pdf_bytes: bytes, pages=None, lang=None, **kwargs) -> str:
+def extract_with_tesseract(pdf_bytes: bytes, pages=None, lang=None, handwriting=False, **kwargs) -> str:
     import pytesseract
 
     tess_lang = lang or DEFAULT_LANG
+    config = "--psm 6 --oem 1" if handwriting else ""
     images = pdf_to_images(pdf_bytes, pages=pages)
     result = []
     for i, img in images:
-        text = pytesseract.image_to_string(img, lang=tess_lang)
+        text = pytesseract.image_to_string(img, lang=tess_lang, config=config)
         result.append(f"--- Page {i+1} ---\n{text}")
     return "\n\n".join(result)
 
@@ -39,15 +40,16 @@ def extract_with_easyocr(pdf_bytes: bytes, pages=None, lang=None, **kwargs) -> s
     return "\n\n".join(result)
 
 
-def extract_with_pymupdf_ocr(pdf_bytes: bytes, pages=None, lang=None, **kwargs) -> str:
+def extract_with_pymupdf_ocr(pdf_bytes: bytes, pages=None, lang=None, handwriting=False, **kwargs) -> str:
     import pymupdf
 
     tess_lang = lang or DEFAULT_LANG
+    ocr_dpi = 400 if handwriting else 300
     result = []
     with pymupdf.open(stream=pdf_bytes, filetype="pdf") as doc:
         for i, page in enumerate(doc):
             if pages is not None and i not in pages:
                 continue
-            tp = page.get_textpage_ocr(language=tess_lang, dpi=300, full=True)
+            tp = page.get_textpage_ocr(language=tess_lang, dpi=ocr_dpi, full=True)
             result.append(f"--- Page {i+1} ---\n{page.get_text(textpage=tp)}")
     return "\n\n".join(result)

@@ -223,6 +223,37 @@ def extract_bboxes(pdf_bytes: bytes, dpi: int = 150, pages=None) -> list[dict]:
     return result
 
 
+def extract_ocr_bboxes(pdf_bytes: bytes, dpi: int = 150, pages=None, lang=None) -> list[dict]:
+    """Run Tesseract OCR on rendered pages and return word-level bounding boxes per page."""
+    import pytesseract
+    import numpy as np
+    from config import DEFAULT_LANG
+
+    tess_lang = lang or DEFAULT_LANG
+    scale = dpi / 72
+    images = pdf_to_images(pdf_bytes, dpi=dpi, pages=pages)
+    result = []
+
+    for page_idx, img in images:
+        data = pytesseract.image_to_data(img, lang=tess_lang, output_type=pytesseract.Output.DICT)
+        words = []
+        for j in range(len(data["text"])):
+            text = data["text"][j].strip()
+            conf = int(data["conf"][j])
+            if not text or conf < 0:
+                continue
+            x, y, w, h = data["left"][j], data["top"][j], data["width"][j], data["height"][j]
+            # img is already at target dpi, coordinates are in pixel space
+            words.append({
+                "bbox": [round(x, 1), round(y, 1), round(x + w, 1), round(y + h, 1)],
+                "text": text,
+                "conf": conf,
+            })
+        result.append({"page_idx": page_idx, "words": words})
+
+    return result
+
+
 def extract_tables(pdf_bytes: bytes, pages=None) -> list[dict]:
     import pdfplumber
 

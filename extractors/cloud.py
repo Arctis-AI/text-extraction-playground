@@ -8,7 +8,7 @@ from config import (
 )
 
 
-def extract_with_textract(pdf_bytes: bytes, pages=None, lang=None, **kwargs) -> str:
+def extract_with_textract(pdf_bytes: bytes, pages=None, lang=None, handwriting=False, **kwargs) -> str:
     """Extract text using AWS Textract."""
     try:
         import boto3
@@ -27,7 +27,13 @@ def extract_with_textract(pdf_bytes: bytes, pages=None, lang=None, **kwargs) -> 
     total_pages = len(reader.pages)
 
     if total_pages == 1 and (pages is None or 0 in pages):
-        response = textract.detect_document_text(Document={"Bytes": pdf_bytes})
+        if handwriting:
+            response = textract.analyze_document(
+                Document={"Bytes": pdf_bytes},
+                FeatureTypes=["FORMS"],
+            )
+        else:
+            response = textract.detect_document_text(Document={"Bytes": pdf_bytes})
         lines = [
             block["Text"]
             for block in response["Blocks"]
@@ -56,27 +62,51 @@ def extract_with_textract(pdf_bytes: bytes, pages=None, lang=None, **kwargs) -> 
     s3.put_object(Bucket=S3_BUCKET, Key=s3_key, Body=upload_bytes)
 
     try:
-        response = textract.start_document_text_detection(
-            DocumentLocation={"S3Object": {"Bucket": S3_BUCKET, "Name": s3_key}}
-        )
-        job_id = response["JobId"]
+        if handwriting:
+            response = textract.start_document_analysis(
+                DocumentLocation={"S3Object": {"Bucket": S3_BUCKET, "Name": s3_key}},
+                FeatureTypes=["FORMS"],
+            )
+            job_id = response["JobId"]
 
-        import time as _time
-        while True:
-            result = textract.get_document_text_detection(JobId=job_id)
-            status = result["JobStatus"]
-            if status == "SUCCEEDED":
-                break
-            elif status == "FAILED":
-                raise RuntimeError(f"Textract job failed: {result.get('StatusMessage', 'Unknown error')}")
-            _time.sleep(1)
+            import time as _time
+            while True:
+                result = textract.get_document_analysis(JobId=job_id)
+                status = result["JobStatus"]
+                if status == "SUCCEEDED":
+                    break
+                elif status == "FAILED":
+                    raise RuntimeError(f"Textract job failed: {result.get('StatusMessage', 'Unknown error')}")
+                _time.sleep(1)
 
-        all_blocks = result["Blocks"]
-        next_token = result.get("NextToken")
-        while next_token:
-            result = textract.get_document_text_detection(JobId=job_id, NextToken=next_token)
-            all_blocks.extend(result["Blocks"])
+            all_blocks = result["Blocks"]
             next_token = result.get("NextToken")
+            while next_token:
+                result = textract.get_document_analysis(JobId=job_id, NextToken=next_token)
+                all_blocks.extend(result["Blocks"])
+                next_token = result.get("NextToken")
+        else:
+            response = textract.start_document_text_detection(
+                DocumentLocation={"S3Object": {"Bucket": S3_BUCKET, "Name": s3_key}}
+            )
+            job_id = response["JobId"]
+
+            import time as _time
+            while True:
+                result = textract.get_document_text_detection(JobId=job_id)
+                status = result["JobStatus"]
+                if status == "SUCCEEDED":
+                    break
+                elif status == "FAILED":
+                    raise RuntimeError(f"Textract job failed: {result.get('StatusMessage', 'Unknown error')}")
+                _time.sleep(1)
+
+            all_blocks = result["Blocks"]
+            next_token = result.get("NextToken")
+            while next_token:
+                result = textract.get_document_text_detection(JobId=job_id, NextToken=next_token)
+                all_blocks.extend(result["Blocks"])
+                next_token = result.get("NextToken")
 
         pages_text = {}
         for block in all_blocks:

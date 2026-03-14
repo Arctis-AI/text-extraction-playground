@@ -13,7 +13,7 @@ from db import get_db
 from extractors import EXTRACTORS, EXTENDED_CATEGORIES
 from pdf_utils import (
     get_pdf_metadata, detect_scanned, parse_pages,
-    extract_tables, extract_bboxes, compute_similarity,
+    extract_tables, extract_bboxes, extract_ocr_bboxes, compute_similarity,
 )
 
 bp = Blueprint("main", __name__)
@@ -21,7 +21,8 @@ bp = Blueprint("main", __name__)
 
 def _lib_info():
     return {
-        k: {"description": v["description"], "category": v["category"]}
+        k: {"description": v["description"], "category": v["category"],
+             "handwriting": v.get("handwriting", False)}
         for k, v in EXTRACTORS.items()
     }
 
@@ -66,7 +67,7 @@ def share(extraction_id):
 
 
 def _run_extraction(pdf_bytes, filename, selected, pages_str, lang, mode,
-                    batch_id=None, prompt=None):
+                    batch_id=None, prompt=None, handwriting=False):
     """Core extraction logic shared between /extract, /api/extract, and /batch-extract."""
     from pypdf import PdfReader
 
@@ -101,6 +102,8 @@ def _run_extraction(pdf_bytes, filename, selected, pages_str, lang, mode,
                     kwargs["lang"] = lang
                 if cat == "vlm" and prompt:
                     kwargs["prompt"] = prompt
+                if handwriting and EXTRACTORS[name].get("handwriting"):
+                    kwargs["handwriting"] = True
                 text = func(pdf_bytes, pages=pages, **kwargs)
                 elapsed = time.perf_counter() - start
                 results[name] = {"text": text, "error": None, "time_ms": round(elapsed * 1000, 1)}
@@ -152,9 +155,10 @@ def extract():
     pages_str = request.form.get("pages", "")
     lang = request.form.get("lang", "") or None
     prompt = request.form.get("vlm_prompt", "") or None
+    handwriting = request.form.get("handwriting") == "1"
 
     result = _run_extraction(pdf_bytes, file.filename, selected, pages_str, lang, mode,
-                             prompt=prompt)
+                             prompt=prompt, handwriting=handwriting)
     return jsonify(result)
 
 
@@ -172,13 +176,14 @@ def api_extract():
     pages_str = request.form.get("pages", "")
     lang = request.form.get("lang", "") or None
     prompt = request.form.get("vlm_prompt", "") or None
+    handwriting = request.form.get("handwriting") == "1"
 
     if mode != "table" and not selected:
         return jsonify({"error": "No libraries selected"}), 400
 
     pdf_bytes = file.read()
     result = _run_extraction(pdf_bytes, file.filename, selected, pages_str, lang, mode,
-                             prompt=prompt)
+                             prompt=prompt, handwriting=handwriting)
     return jsonify(result)
 
 
@@ -195,6 +200,7 @@ def batch_extract():
     pages_str = request.form.get("pages", "")
     lang = request.form.get("lang", "") or None
     prompt = request.form.get("vlm_prompt", "") or None
+    handwriting = request.form.get("handwriting") == "1"
     batch_id = str(uuid.uuid4())
 
     results = []
@@ -206,7 +212,7 @@ def batch_extract():
             continue
         pdf_bytes = file.read()
         result = _run_extraction(pdf_bytes, file.filename, selected, pages_str, lang, mode,
-                                 batch_id, prompt=prompt)
+                                 batch_id, prompt=prompt, handwriting=handwriting)
         total_pages += result["metadata"]["page_count"]
         for r in result["results"].values():
             if r.get("time_ms"):
@@ -234,13 +240,29 @@ def bbox():
 
     pdf_bytes = file.read()
     pages_str = request.form.get("pages", "")
+    handwriting = request.form.get("handwriting") == "1"
+    lang = request.form.get("lang", "") or None
 
     from pypdf import PdfReader
     reader = PdfReader(io.BytesIO(pdf_bytes))
     pages = parse_pages(pages_str, len(reader.pages))
 
     result = extract_bboxes(pdf_bytes, pages=pages)
-    return jsonify({"filename": file.filename, "pages": result})
+
+    if handwriting:
+        try:
+            ocr_pages = extract_ocr_bboxes(pdf_bytes, dpi=150, pages=pages, lang=lang)
+            # Merge OCR words into corresponding pages
+            ocr_by_idx = {p["page_idx"]: p["words"] for p in ocr_pages}
+            for pg in result:
+                page_idx = pg["page"] - 1
+                pg["ocr_words"] = ocr_by_idx.get(page_idx, [])
+        except Exception:
+            # OCR failed — still return normal bboxes
+            for pg in result:
+                pg["ocr_words"] = []
+
+    return jsonify({"filename": file.filename, "pages": result, "has_ocr": handwriting})
 
 
 @bp.route("/diff", methods=["POST"])
