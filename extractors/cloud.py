@@ -129,7 +129,7 @@ def extract_with_textract(pdf_bytes: bytes, pages=None, lang=None, handwriting=F
             pass
 
 
-def extract_with_llamaparse(pdf_bytes: bytes, pages=None, lang=None, **kwargs) -> str:
+def extract_with_llamaparse(pdf_bytes: bytes, pages=None, lang=None, output_format="text", **kwargs) -> str:
     """Extract text using LlamaIndex LlamaParse cloud API."""
     import asyncio
     import tempfile
@@ -153,7 +153,8 @@ def extract_with_llamaparse(pdf_bytes: bytes, pages=None, lang=None, **kwargs) -
         tmp_path = tmp.name
 
     try:
-        parser = LlamaParse(api_key=LLAMA_CLOUD_API_KEY, result_type="text")
+        result_type = "markdown" if output_format == "markdown" else "text"
+        parser = LlamaParse(api_key=LLAMA_CLOUD_API_KEY, result_type=result_type)
 
         try:
             loop = asyncio.get_event_loop()

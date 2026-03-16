@@ -44,6 +44,14 @@ DEFAULT_VLM_PROMPT = (
     "Output only the extracted text, no commentary."
 )
 
+DEFAULT_VLM_MARKDOWN_PROMPT = (
+    "Extract all content from this document page and format it as clean Markdown. "
+    "Use appropriate Markdown syntax: # for headings, **bold**, *italic*, "
+    "- or 1. for lists, | for tables, > for blockquotes, ``` for code blocks. "
+    "Preserve the document's hierarchical structure and formatting. "
+    "Output only the Markdown content, no commentary."
+)
+
 HANDWRITING_VLM_PROMPT = (
     "This document contains handwritten text. "
     "Carefully read and extract ALL handwritten text from this page, "
@@ -51,4 +59,14 @@ HANDWRITING_VLM_PROMPT = (
     "Preserve the original layout and structure as much as possible. "
     "If handwriting is unclear, provide your best interpretation with [?] for uncertain words. "
     "Output only the extracted text, no commentary."
+)
+
+HANDWRITING_VLM_MARKDOWN_PROMPT = (
+    "This document contains handwritten text. "
+    "Carefully read and extract ALL handwritten text from this page, "
+    "including any printed text that may also be present. "
+    "Format the output as clean Markdown with appropriate syntax: "
+    "# for headings, **bold**, *italic*, - or 1. for lists, | for tables. "
+    "If handwriting is unclear, provide your best interpretation with [?] for uncertain words. "
+    "Output only the Markdown content, no commentary."
 )

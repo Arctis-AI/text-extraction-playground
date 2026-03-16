@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Extraction Playground</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&family=VT323&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         /* ===== Theme Variables ===== */
         :root {
@@ -126,6 +127,26 @@
         .mode-btn{flex:1;padding:5px;border:none;background:transparent;color:var(--text-dim);font-size:.65rem;font-family:var(--font-body);cursor:pointer;transition:all .1s}
         .mode-btn.active{background:var(--accent);color:var(--bg-main)}
         .mode-btn:not(:last-child){border-right:var(--border-w) var(--border-style) var(--border)}
+
+        /* Output format toggle */
+        .format-toggle{display:flex;border:var(--border-w) var(--border-style) var(--border);border-radius:var(--radius);overflow:hidden;margin-top:8px}
+        .format-btn{flex:1;padding:4px;border:none;background:transparent;color:var(--text-dim);font-size:.6rem;font-family:var(--font-body);cursor:pointer;transition:all .1s}
+        .format-btn:not(:last-child){border-right:var(--border-w) var(--border-style) var(--border)}
+        .format-btn.active{background:var(--accent);color:var(--bg-main)}
+        .format-hint{font-size:.55rem;color:var(--text-muted);margin-top:4px;font-style:italic}
+        .md-rendered{font-family:var(--font-body);font-size:.75rem;color:var(--text-pre);line-height:1.6;padding:12px 14px;overflow-x:auto}
+        .md-rendered h1,.md-rendered h2,.md-rendered h3,.md-rendered h4{color:var(--text);margin:12px 0 6px;font-family:var(--font-heading)}
+        .md-rendered h1{font-size:1.2em} .md-rendered h2{font-size:1.05em} .md-rendered h3{font-size:.9em}
+        .md-rendered p{margin:4px 0}
+        .md-rendered ul,.md-rendered ol{margin:4px 0 4px 20px}
+        .md-rendered table{border-collapse:collapse;width:100%;margin:8px 0;font-size:.7rem}
+        .md-rendered th,.md-rendered td{border:1px solid var(--border);padding:4px 8px;text-align:left}
+        .md-rendered th{background:var(--bg-input);font-weight:600}
+        .md-rendered code{background:var(--bg-input);padding:1px 4px;border-radius:3px;font-size:.85em}
+        .md-rendered pre{background:var(--bg-input);padding:8px;border-radius:var(--radius);overflow-x:auto;margin:6px 0}
+        .md-rendered pre code{background:none;padding:0}
+        .md-rendered blockquote{border-left:3px solid var(--accent);padding-left:10px;margin:6px 0;color:var(--text-dim)}
+        .md-badge{font-size:.55rem;background:var(--purple);color:#fff;padding:1px 5px;border-radius:3px;margin-left:6px;vertical-align:middle}
 
         /* Bbox canvas */
         .bbox-canvas-wrap{position:relative;display:inline-block;max-width:100%}
@@ -368,6 +389,11 @@
                         <button class="gran-btn" data-gran="lines" onclick="setGranularity('lines')">LINES</button>
                         <button class="gran-btn active" data-gran="words" onclick="setGranularity('words')">WORDS</button>
                     </div>
+                    <div class="format-toggle" id="formatToggle">
+                        <button class="format-btn active" data-fmt="text" onclick="setOutputFormat('text')">RAW TEXT</button>
+                        <button class="format-btn" data-fmt="markdown" onclick="setOutputFormat('markdown')">MARKDOWN</button>
+                    </div>
+                    <div class="format-hint" id="formatHint" style="display:none">markdown supported by: VLM, LlamaParse, Docling</div>
                 </div>
 
                 <!-- Pages & Language -->
@@ -545,6 +571,7 @@
 
     <script>
         const $=id=>document.getElementById(id);
+        const LIB_INFO={{ libraries|tojson }};
         let selectedFiles=[];
         let currentMode='text';
         let currentData=null;
@@ -552,6 +579,7 @@
         let currentGranularity='words';
         let bboxData=null;
         let handwritingMode=false;
+        let outputFormat='text';
 
         // Theme
         function setTheme(t){
@@ -602,6 +630,8 @@
             document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
             document.querySelectorAll('.lib-item').forEach(el=>m==='table'?el.classList.add('disabled'):el.classList.remove('disabled'));
             $('granToggle').style.display=m==='bbox'?'flex':'none';
+            $('formatToggle').style.display=m==='text'?'flex':'none';
+            if(m!=='text'){$('formatHint').style.display='none'}
             updateBtn();
         }
 
@@ -609,6 +639,12 @@
             currentGranularity=g;
             document.querySelectorAll('.gran-btn').forEach(b=>b.classList.toggle('active',b.dataset.gran===g));
             if(bboxData)renderBboxResults(bboxData);
+        }
+
+        function setOutputFormat(fmt){
+            outputFormat=fmt;
+            document.querySelectorAll('.format-btn').forEach(b=>b.classList.toggle('active',b.dataset.fmt===fmt));
+            $('formatHint').style.display=fmt==='markdown'?'block':'none';
         }
 
         function toggleHandwriting(on){
@@ -667,6 +703,7 @@
                     if(pages)fd.append('pages',pages);if(lang)fd.append('lang',lang);
                     if(vlmPrompt)fd.append('vlm_prompt',vlmPrompt);
                     if(handwritingMode)fd.append('handwriting','1');
+                    if(outputFormat!=='text')fd.append('output_format',outputFormat);
                     const resp=await fetch('/extract',{method:'POST',body:fd});data=await resp.json();
                     if(data.error){showError(data.error);$('spinner').classList.remove('active');return}
                     currentData=data;resultTexts={};
@@ -678,6 +715,7 @@
                     if(pages)fd.append('pages',pages);if(lang)fd.append('lang',lang);
                     if(vlmPrompt)fd.append('vlm_prompt',vlmPrompt);
                     if(handwritingMode)fd.append('handwriting','1');
+                    if(outputFormat!=='text')fd.append('output_format',outputFormat);
                     const resp=await fetch('/batch-extract',{method:'POST',body:fd});data=await resp.json();
                     if(data.error){showError(data.error);$('spinner').classList.remove('active');return}
                     currentData=data;renderBatch(data);
@@ -711,9 +749,14 @@
         function renderTextResults(results,container){
             for(const[lib,res]of Object.entries(results)){
                 const card=document.createElement('div');card.className='result-card';
+                const isMd=outputFormat==='markdown'&&LIB_INFO[lib]&&LIB_INFO[lib].markdown;
                 if(res.error){card.innerHTML=`<div class="card-header"><div class="card-header-left"><span class="card-title">${esc(lib)}</span><span class="card-badge error">ERR</span></div></div><div class="card-body"><pre class="error-text">${esc(res.error)}</pre></div>`}
                 else{const c=res.text.length,w=res.text.trim().split(/\s+/).filter(Boolean).length,l=res.text.split('\n').length;
-                card.innerHTML=`<div class="card-header"><div class="card-header-left"><span class="card-title">${esc(lib)}</span><span class="card-badge time">${fmtTime(res.time_ms)}</span></div><div class="card-stats"><span>${c.toLocaleString()}c</span><span>${w.toLocaleString()}w</span><span>${l.toLocaleString()}L</span></div></div><div class="card-body"><button class="copy-btn" onclick="copyText(this)">[copy]</button><pre>${esc(res.text)}</pre></div>`}
+                const mdBadge=isMd?'<span class="md-badge">MD</span>':'';
+                const bodyContent=isMd
+                    ?`<div class="card-body"><button class="copy-btn" onclick="copyText(this)">[copy]</button><div class="md-source" style="display:none">${esc(res.text)}</div><div class="md-rendered">${marked.parse(res.text)}</div></div>`
+                    :`<div class="card-body"><button class="copy-btn" onclick="copyText(this)">[copy]</button><pre>${esc(res.text)}</pre></div>`;
+                card.innerHTML=`<div class="card-header"><div class="card-header-left"><span class="card-title">${esc(lib)}${mdBadge}</span><span class="card-badge time">${fmtTime(res.time_ms)}</span></div><div class="card-stats"><span>${c.toLocaleString()}c</span><span>${w.toLocaleString()}w</span><span>${l.toLocaleString()}L</span></div></div>${bodyContent}`}
                 container.appendChild(card);
             }
         }

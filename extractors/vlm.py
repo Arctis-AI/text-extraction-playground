@@ -4,7 +4,8 @@ import io
 from config import (
     ANTHROPIC_API_KEY, OPENAI_API_KEY,
     GOOGLE_PROJECT_ID, GOOGLE_LOCATION,
-    DEFAULT_VLM_PROMPT, HANDWRITING_VLM_PROMPT,
+    DEFAULT_VLM_PROMPT, DEFAULT_VLM_MARKDOWN_PROMPT,
+    HANDWRITING_VLM_PROMPT, HANDWRITING_VLM_MARKDOWN_PROMPT,
 )
 from pdf_utils import pdf_to_images
 
@@ -16,14 +17,21 @@ def _encode_image(img) -> str:
     return base64.b64encode(buf.getvalue()).decode()
 
 
-def extract_with_vlm_claude(pdf_bytes: bytes, pages=None, lang=None, prompt=None, handwriting=False, **kwargs) -> str:
+def _default_prompt(handwriting=False, output_format="text"):
+    """Pick the right default prompt based on handwriting and output format."""
+    if handwriting:
+        return HANDWRITING_VLM_MARKDOWN_PROMPT if output_format == "markdown" else HANDWRITING_VLM_PROMPT
+    return DEFAULT_VLM_MARKDOWN_PROMPT if output_format == "markdown" else DEFAULT_VLM_PROMPT
+
+
+def extract_with_vlm_claude(pdf_bytes: bytes, pages=None, lang=None, prompt=None, handwriting=False, output_format="text", **kwargs) -> str:
     """Extract text using Claude vision (Anthropic API)."""
     try:
         import anthropic
     except ImportError:
         raise ImportError("anthropic is not installed. Run: pip install anthropic")
 
-    prompt = prompt or (HANDWRITING_VLM_PROMPT if handwriting else DEFAULT_VLM_PROMPT)
+    prompt = prompt or _default_prompt(handwriting, output_format)
     images = pdf_to_images(pdf_bytes, dpi=150, pages=pages)
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
@@ -46,14 +54,14 @@ def extract_with_vlm_claude(pdf_bytes: bytes, pages=None, lang=None, prompt=None
     return "\n\n".join(result)
 
 
-def extract_with_vlm_openai(pdf_bytes: bytes, pages=None, lang=None, prompt=None, handwriting=False, **kwargs) -> str:
+def extract_with_vlm_openai(pdf_bytes: bytes, pages=None, lang=None, prompt=None, handwriting=False, output_format="text", **kwargs) -> str:
     """Extract text using GPT-4o vision (OpenAI API)."""
     try:
         from openai import OpenAI
     except ImportError:
         raise ImportError("openai is not installed. Run: pip install openai")
 
-    prompt = prompt or (HANDWRITING_VLM_PROMPT if handwriting else DEFAULT_VLM_PROMPT)
+    prompt = prompt or _default_prompt(handwriting, output_format)
     images = pdf_to_images(pdf_bytes, dpi=150, pages=pages)
     client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -76,7 +84,7 @@ def extract_with_vlm_openai(pdf_bytes: bytes, pages=None, lang=None, prompt=None
     return "\n\n".join(result)
 
 
-def extract_with_vlm_gemini(pdf_bytes: bytes, pages=None, lang=None, prompt=None, handwriting=False, **kwargs) -> str:
+def extract_with_vlm_gemini(pdf_bytes: bytes, pages=None, lang=None, prompt=None, handwriting=False, output_format="text", **kwargs) -> str:
     """Extract text using Gemini via Google Vertex AI."""
     try:
         import vertexai
@@ -84,7 +92,7 @@ def extract_with_vlm_gemini(pdf_bytes: bytes, pages=None, lang=None, prompt=None
     except ImportError:
         raise ImportError("google-cloud-aiplatform is not installed. Run: pip install google-cloud-aiplatform")
 
-    prompt = prompt or (HANDWRITING_VLM_PROMPT if handwriting else DEFAULT_VLM_PROMPT)
+    prompt = prompt or _default_prompt(handwriting, output_format)
     vertexai.init(project=GOOGLE_PROJECT_ID, location=GOOGLE_LOCATION)
     model = GenerativeModel("gemini-2.0-flash")
 

@@ -64,29 +64,34 @@ EXTRACTORS = {
         "func": extract_with_llamaparse,
         "description": "LlamaIndex LlamaParse, AI-powered extraction",
         "category": "cloud",
+        "markdown": True,
     },
     "docling": {
         "func": extract_with_docling,
         "description": "IBM Docling + TableFormer, document AI",
         "category": "ai",
+        "markdown": True,
     },
     "vlm-claude": {
         "func": extract_with_vlm_claude,
         "description": "Claude vision, multimodal extraction",
         "category": "vlm",
         "handwriting": True,
+        "markdown": True,
     },
     "vlm-openai": {
         "func": extract_with_vlm_openai,
         "description": "GPT-4o vision, multimodal extraction",
         "category": "vlm",
         "handwriting": True,
+        "markdown": True,
     },
     "vlm-gemini": {
         "func": extract_with_vlm_gemini,
         "description": "Gemini 2.0 Flash via Vertex AI",
         "category": "vlm",
         "handwriting": True,
+        "markdown": True,
     },
 }
 

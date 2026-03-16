@@ -22,7 +22,8 @@ bp = Blueprint("main", __name__)
 def _lib_info():
     return {
         k: {"description": v["description"], "category": v["category"],
-             "handwriting": v.get("handwriting", False)}
+             "handwriting": v.get("handwriting", False),
+             "markdown": v.get("markdown", False)}
         for k, v in EXTRACTORS.items()
     }
 
@@ -67,7 +68,7 @@ def share(extraction_id):
 
 
 def _run_extraction(pdf_bytes, filename, selected, pages_str, lang, mode,
-                    batch_id=None, prompt=None, handwriting=False):
+                    batch_id=None, prompt=None, handwriting=False, output_format="text"):
     """Core extraction logic shared between /extract, /api/extract, and /batch-extract."""
     from pypdf import PdfReader
 
@@ -104,6 +105,8 @@ def _run_extraction(pdf_bytes, filename, selected, pages_str, lang, mode,
                     kwargs["prompt"] = prompt
                 if handwriting and EXTRACTORS[name].get("handwriting"):
                     kwargs["handwriting"] = True
+                if output_format == "markdown" and EXTRACTORS[name].get("markdown"):
+                    kwargs["output_format"] = "markdown"
                 text = func(pdf_bytes, pages=pages, **kwargs)
                 elapsed = time.perf_counter() - start
                 results[name] = {"text": text, "error": None, "time_ms": round(elapsed * 1000, 1)}
@@ -156,9 +159,10 @@ def extract():
     lang = request.form.get("lang", "") or None
     prompt = request.form.get("vlm_prompt", "") or None
     handwriting = request.form.get("handwriting") == "1"
+    output_format = request.form.get("output_format", "text")
 
     result = _run_extraction(pdf_bytes, file.filename, selected, pages_str, lang, mode,
-                             prompt=prompt, handwriting=handwriting)
+                             prompt=prompt, handwriting=handwriting, output_format=output_format)
     return jsonify(result)
 
 
@@ -177,13 +181,14 @@ def api_extract():
     lang = request.form.get("lang", "") or None
     prompt = request.form.get("vlm_prompt", "") or None
     handwriting = request.form.get("handwriting") == "1"
+    output_format = request.form.get("output_format", "text")
 
     if mode != "table" and not selected:
         return jsonify({"error": "No libraries selected"}), 400
 
     pdf_bytes = file.read()
     result = _run_extraction(pdf_bytes, file.filename, selected, pages_str, lang, mode,
-                             prompt=prompt, handwriting=handwriting)
+                             prompt=prompt, handwriting=handwriting, output_format=output_format)
     return jsonify(result)
 
 
@@ -201,6 +206,7 @@ def batch_extract():
     lang = request.form.get("lang", "") or None
     prompt = request.form.get("vlm_prompt", "") or None
     handwriting = request.form.get("handwriting") == "1"
+    output_format = request.form.get("output_format", "text")
     batch_id = str(uuid.uuid4())
 
     results = []
@@ -212,7 +218,7 @@ def batch_extract():
             continue
         pdf_bytes = file.read()
         result = _run_extraction(pdf_bytes, file.filename, selected, pages_str, lang, mode,
-                                 batch_id, prompt=prompt, handwriting=handwriting)
+                                 batch_id, prompt=prompt, handwriting=handwriting, output_format=output_format)
         total_pages += result["metadata"]["page_count"]
         for r in result["results"].values():
             if r.get("time_ms"):
