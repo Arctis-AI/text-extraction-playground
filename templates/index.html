@@ -249,6 +249,9 @@
         /* Result cards */
         .result-card{background:var(--bg-panel);border:var(--border-w) var(--border-style) var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--card-shadow);transition:border-color .15s}
         .result-card:hover{border-color:var(--border-hover)}
+        @keyframes streamIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        #streamResults .result-card{animation:streamIn .25s ease-out}
+        .stream-status{text-align:center;padding:12px;font-size:.7rem;color:var(--text-dim);font-family:var(--font-body)}
         .card-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:var(--border-w) var(--border-style) var(--border)}
         .card-header-left{display:flex;align-items:center;gap:8px}
         .card-title{font-size:.75rem}
@@ -704,11 +707,77 @@
                     if(vlmPrompt)fd.append('vlm_prompt',vlmPrompt);
                     if(handwritingMode)fd.append('handwriting','1');
                     if(outputFormat!=='text')fd.append('output_format',outputFormat);
-                    const resp=await fetch('/extract',{method:'POST',body:fd});data=await resp.json();
-                    if(data.error){showError(data.error);$('spinner').classList.remove('active');return}
-                    currentData=data;resultTexts={};
-                    for(const[k,v]of Object.entries(data.results||{})){if(v.text)resultTexts[k]=v.text}
-                    renderAll(data);
+                    const resp=await fetch('/extract-stream',{method:'POST',body:fd});
+                    const ct=resp.headers.get('content-type')||'';
+                    if(ct.includes('application/json')){
+                        data=await resp.json();
+                        if(data.error){showError(data.error);$('spinner').classList.remove('active');return}
+                        currentData=data;resultTexts={};
+                        for(const[k,v]of Object.entries(data.results||{})){if(v.text)resultTexts[k]=v.text}
+                        renderAll(data);
+                    }else{
+                        data={results:{},metadata:null,scan_detection:null,similarity:{},id:null,filename:selectedFiles[0].name};
+                        currentData=data;resultTexts={};
+                        const r=$('results');r.innerHTML='';$('emptyState').style.display='none';$('toolbar').classList.add('visible');
+                        $('spinner').classList.remove('active');
+                        const resultsContainer=document.createElement('div');resultsContainer.id='streamResults';
+                        r.appendChild(resultsContainer);
+                        const totalLibs=libs.length;let doneCount=0;
+                        const statusEl=document.createElement('div');statusEl.className='stream-status';
+                        statusEl.textContent=`extracting 0/${totalLibs}...`;
+                        r.appendChild(statusEl);
+                        const reader=resp.body.getReader();const decoder=new TextDecoder();let buf='';
+                        while(true){
+                            const{done:rdone,value}=await reader.read();
+                            if(rdone)break;
+                            buf+=decoder.decode(value,{stream:true});
+                            const parts=buf.split('\n\n');buf=parts.pop();
+                            for(const part of parts){
+                                if(!part.trim())continue;
+                                let evtType='message',evtData='';
+                                for(const line of part.split('\n')){
+                                    if(line.startsWith(':'))continue;
+                                    if(line.startsWith('event: '))evtType=line.slice(7).trim();
+                                    else if(line.startsWith('data: '))evtData=line.slice(6);
+                                }
+                                if(!evtData)continue;
+                                const payload=JSON.parse(evtData);
+                                if(evtType==='meta'){
+                                    data.metadata=payload.metadata;data.scan_detection=payload.scan_detection;data.filename=payload.filename;
+                                    if(payload.scan_detection&&payload.scan_detection.is_scanned){
+                                        const w=document.createElement('div');w.className='scan-warning';
+                                        w.innerHTML=`<div class="scan-warning-text"><strong>! scanned PDF</strong> - ${payload.scan_detection.scanned_pages.length}/${payload.metadata?.page_count||'?'} pages are images (${payload.scan_detection.confidence}). use OCR.</div><button onclick="toggleGroup('ocr',true)">[enable OCR]</button>`;
+                                        r.insertBefore(w,resultsContainer);
+                                    }
+                                    if(payload.metadata){
+                                        const m=payload.metadata,panel=document.createElement('div');panel.className='metadata-panel';
+                                        panel.innerHTML=[['PG',m.page_count],['SIZE',fmtBytes(m.file_size)],['AUTHOR',m.author||'-'],['CREATOR',m.creator||'-'],['DATE',m.creation_date?m.creation_date.replace(/^D:/,'').slice(0,8):'-'],['ENC',m.encrypted?'Y':'N'],['IMG',m.has_images?'Y':'N']].map(([l,v])=>`<div class="meta-item"><div class="meta-label">${l}</div><div class="meta-value">${esc(String(v))}</div></div>`).join('');
+                                        r.insertBefore(panel,resultsContainer);
+                                    }
+                                }else if(evtType==='result'){
+                                    const lib=payload.lib;
+                                    data.results[lib]={text:payload.text,error:payload.error,time_ms:payload.time_ms};
+                                    if(payload.text)resultTexts[lib]=payload.text;
+                                    doneCount++;
+                                    statusEl.textContent=`extracting ${doneCount}/${totalLibs}...`;
+                                    const card=document.createElement('div');card.className='result-card';
+                                    renderSingleResultCard(lib,payload,card);
+                                    resultsContainer.appendChild(card);
+                                }else if(evtType==='done'){
+                                    data.id=payload.id;data.similarity=payload.similarity;
+                                    currentData=data;
+                                    statusEl.remove();
+                                    if(payload.similarity&&Object.keys(payload.similarity).length>0){
+                                        const s=document.createElement('div');s.className='similarity-panel';
+                                        let h='<div class="similarity-title">SIMILARITY</div><div class="similarity-grid">';
+                                        for(const[k,v]of Object.entries(payload.similarity)){h+=`<div class="sim-badge ${v>=90?'high':v>=70?'med':'low'}">${esc(k)}: ${v}%</div>`}
+                                        h+='</div>';s.innerHTML=h;r.insertBefore(s,resultsContainer);
+                                    }
+                                    populateDiffSelectors();
+                                }
+                            }
+                        }
+                    }
                 }else{
                     const fd=new FormData();selectedFiles.forEach(f=>fd.append('files',f));
                     libs.forEach(l=>fd.append('libraries',l));fd.append('mode',currentMode);
@@ -744,6 +813,18 @@
             }
             currentMode==='table'?renderTableResults(data.results,r):renderTextResults(data.results,r);
             populateDiffSelectors();
+        }
+
+        function renderSingleResultCard(lib,res,card){
+            const isMd=outputFormat==='markdown'&&LIB_INFO[lib]&&LIB_INFO[lib].markdown;
+            if(res.error){card.innerHTML=`<div class="card-header"><div class="card-header-left"><span class="card-title">${esc(lib)}</span><span class="card-badge error">ERR</span></div></div><div class="card-body"><pre class="error-text">${esc(res.error)}</pre></div>`}
+            else if(res.text){const c=res.text.length,w=res.text.trim().split(/\s+/).filter(Boolean).length,l=res.text.split('\n').length;
+            const mdBadge=isMd?'<span class="md-badge">MD</span>':'';
+            const bodyContent=isMd
+                ?`<div class="card-body"><button class="copy-btn" onclick="copyText(this)">[copy]</button><div class="md-source" style="display:none">${esc(res.text)}</div><div class="md-rendered">${marked.parse(res.text)}</div></div>`
+                :`<div class="card-body"><button class="copy-btn" onclick="copyText(this)">[copy]</button><pre>${esc(res.text)}</pre></div>`;
+            card.innerHTML=`<div class="card-header"><div class="card-header-left"><span class="card-title">${esc(lib)}${mdBadge}</span><span class="card-badge time">${fmtTime(res.time_ms)}</span></div><div class="card-stats"><span>${c.toLocaleString()}c</span><span>${w.toLocaleString()}w</span><span>${l.toLocaleString()}L</span></div></div>${bodyContent}`}
+            else{card.innerHTML=`<div class="card-header"><div class="card-header-left"><span class="card-title">${esc(lib)}</span><span class="card-badge time">${fmtTime(res.time_ms)}</span></div></div><div class="card-body"><pre style="opacity:0.4">no text extracted</pre></div>`}
         }
 
         function renderTextResults(results,container){

@@ -1,12 +1,15 @@
+import concurrent.futures
 import io
 import json
 import os
+import queue
+import threading
 import time
 import traceback
 import uuid
 from difflib import SequenceMatcher, unified_diff
 
-from flask import Blueprint, render_template, request, jsonify, Response
+from flask import Blueprint, render_template, request, jsonify, Response, stream_with_context
 
 from config import LANGUAGES
 from db import get_db
@@ -164,6 +167,131 @@ def extract():
     result = _run_extraction(pdf_bytes, file.filename, selected, pages_str, lang, mode,
                              prompt=prompt, handwriting=handwriting, output_format=output_format)
     return jsonify(result)
+
+
+def _run_single_extractor(name, pdf_bytes, pages, lang, prompt, handwriting, output_format):
+    """Run a single extractor and return a result dict."""
+    func = EXTRACTORS[name]["func"]
+    cat = EXTRACTORS[name]["category"]
+    try:
+        start = time.perf_counter()
+        kwargs = {}
+        if cat in EXTENDED_CATEGORIES:
+            kwargs["lang"] = lang
+        if cat == "vlm" and prompt:
+            kwargs["prompt"] = prompt
+        if handwriting and EXTRACTORS[name].get("handwriting"):
+            kwargs["handwriting"] = True
+        if output_format == "markdown" and EXTRACTORS[name].get("markdown"):
+            kwargs["output_format"] = "markdown"
+        text = func(pdf_bytes, pages=pages, **kwargs)
+        elapsed = time.perf_counter() - start
+        return {"lib": name, "text": text, "error": None, "time_ms": round(elapsed * 1000, 1)}
+    except ImportError as e:
+        return {"lib": name, "text": None, "error": str(e), "time_ms": None}
+    except Exception:
+        return {"lib": name, "text": None, "error": traceback.format_exc(), "time_ms": None}
+
+
+@bp.route("/extract-stream", methods=["POST"])
+def extract_stream():
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+    file = request.files["file"]
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        return jsonify({"error": "Please upload a PDF file"}), 400
+
+    selected = request.form.getlist("libraries")
+    mode = request.form.get("mode", "text")
+    if mode != "table" and not selected:
+        return jsonify({"error": "No libraries selected"}), 400
+
+    pdf_bytes = file.read()
+    filename = file.filename
+    pages_str = request.form.get("pages", "")
+    lang = request.form.get("lang", "") or None
+    prompt = request.form.get("vlm_prompt", "") or None
+    handwriting = request.form.get("handwriting") == "1"
+    output_format = request.form.get("output_format", "text")
+
+    from pypdf import PdfReader
+    reader = PdfReader(io.BytesIO(pdf_bytes))
+    max_pages = len(reader.pages)
+
+    metadata = get_pdf_metadata(pdf_bytes, filename)
+    scan_info = detect_scanned(pdf_bytes)
+    pages = parse_pages(pages_str, max_pages)
+
+    # For table mode, fall back to non-streaming
+    if mode == "table":
+        result = _run_extraction(pdf_bytes, filename, selected, pages_str, lang, mode,
+                                 prompt=prompt, handwriting=handwriting, output_format=output_format)
+        return jsonify(result)
+
+    # Filter to valid extractors
+    valid_selected = [name for name in selected if name in EXTRACTORS]
+
+    # Use a queue so the generator can pull results as they complete
+    result_queue = queue.Queue()
+
+    def run_extractors():
+        try:
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future_to_lib = {
+                    executor.submit(
+                        _run_single_extractor, name, pdf_bytes, pages, lang,
+                        prompt, handwriting, output_format
+                    ): name
+                    for name in valid_selected
+                }
+                for future in concurrent.futures.as_completed(future_to_lib):
+                    result_queue.put(future.result())
+        finally:
+            result_queue.put(None)  # sentinel
+
+    worker = threading.Thread(target=run_extractors, daemon=True)
+    worker.start()
+
+    @stream_with_context
+    def generate():
+        # Padding to flush any proxy/middleware buffers
+        yield f": padding{' ' * 2048}\n\n"
+
+        # Send metadata first
+        meta_event = {"metadata": metadata, "scan_detection": scan_info, "filename": filename}
+        yield f"event: meta\ndata: {json.dumps(meta_event)}\n\n"
+
+        results = {}
+        while True:
+            item = result_queue.get()
+            if item is None:
+                break
+            lib = item["lib"]
+            results[lib] = {"text": item["text"], "error": item["error"], "time_ms": item["time_ms"]}
+            yield f"event: result\ndata: {json.dumps(item)}\n\n"
+
+        similarity = compute_similarity(results)
+
+        # Save to DB
+        extraction_id = str(uuid.uuid4())
+        db = get_db()
+        db.execute(
+            "INSERT INTO extractions (id, filename, file_size, metadata, scan_detection) VALUES (?, ?, ?, ?, ?)",
+            (extraction_id, filename, len(pdf_bytes), json.dumps(metadata), json.dumps(scan_info))
+        )
+        for lib_name, res in results.items():
+            db.execute(
+                "INSERT INTO extraction_results (extraction_id, library, text, error, time_ms, mode) VALUES (?, ?, ?, ?, ?, ?)",
+                (extraction_id, lib_name, res.get("text"), res.get("error"), res.get("time_ms"), mode)
+            )
+        db.commit()
+        db.close()
+
+        done_event = {"id": extraction_id, "similarity": similarity}
+        yield f"event: done\ndata: {json.dumps(done_event)}\n\n"
+
+    return Response(generate(), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @bp.route("/api/extract", methods=["POST"])

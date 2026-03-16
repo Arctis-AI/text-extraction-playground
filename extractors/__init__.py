@@ -1,6 +1,7 @@
 from extractors.text import (
     extract_with_pypdf, extract_with_pdfplumber,
     extract_with_pdfminer, extract_with_pymupdf,
+    extract_with_pymupdf4llm, extract_with_markitdown,
 )
 from extractors.ocr import extract_with_tesseract, extract_with_pymupdf_ocr
 
@@ -10,7 +11,10 @@ except ImportError:
     def extract_with_easyocr(*args, **kwargs):
         raise ImportError("easyocr is not installed. Install it with: pip install easyocr")
 from extractors.cloud import extract_with_textract, extract_with_llamaparse
-from extractors.ai import extract_with_docling
+from extractors.ai import (
+    extract_with_docling, extract_with_unstructured,
+    extract_with_marker, extract_with_nougat,
+)
 from extractors.vlm import (
     extract_with_vlm_claude, extract_with_vlm_openai, extract_with_vlm_gemini,
 )
@@ -35,6 +39,18 @@ EXTRACTORS = {
         "func": extract_with_pymupdf,
         "description": "C-based MuPDF, very fast",
         "category": "text",
+    },
+    "pymupdf4llm": {
+        "func": extract_with_pymupdf4llm,
+        "description": "PyMuPDF4LLM, LLM-optimized markdown output",
+        "category": "text",
+        "markdown": True,
+    },
+    "markitdown": {
+        "func": extract_with_markitdown,
+        "description": "Microsoft MarkItDown, markdown converter",
+        "category": "text",
+        "markdown": True,
     },
     "tesseract": {
         "func": extract_with_tesseract,
@@ -69,6 +85,23 @@ EXTRACTORS = {
     "docling": {
         "func": extract_with_docling,
         "description": "IBM Docling + TableFormer, document AI",
+        "category": "ai",
+        "markdown": True,
+    },
+    "unstructured": {
+        "func": extract_with_unstructured,
+        "description": "Unstructured.io, document ETL with layout detection",
+        "category": "ai",
+    },
+    "marker": {
+        "func": extract_with_marker,
+        "description": "Marker, ML-based PDF to markdown",
+        "category": "ai",
+        "markdown": True,
+    },
+    "nougat": {
+        "func": extract_with_nougat,
+        "description": "Meta Nougat, neural OCR for academic documents",
         "category": "ai",
         "markdown": True,
     },

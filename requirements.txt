@@ -3,6 +3,7 @@ pypdf
 pdfplumber
 pdfminer.six
 pymupdf
+pymupdf4llm
 Pillow
 pytesseract
 easyocr
@@ -10,6 +11,10 @@ boto3
 python-dotenv
 llama-parse
 docling
+unstructured[pdf]
+marker-pdf
+markitdown[pdf]
+nougat-ocr
 anthropic
 openai
 google-cloud-aiplatform
